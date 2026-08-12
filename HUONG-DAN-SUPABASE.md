@@ -61,3 +61,20 @@ Mọi thay đổi có hiệu lực ngay trên web trong tối đa 60 giây (tran
 ## Về đăng nhập khách hàng (`/login`) và license
 
 Trang `/login` hiện tại mới dừng ở mức **xác thực danh tính bằng email** (khách đăng nhập được, web biết đúng email nào đang online). Việc hiển thị **tình trạng license** (còn hạn hay không, gói nào, máy nào đang active) cần nối thêm vào Edge Function `check-license` đã có sẵn của anh — phần này chưa làm trong bản này vì cần biết chính xác cấu trúc request/response của Edge Function đó để gọi đúng. Khi anh sẵn sàng, quay lại và mình sẽ nối tiếp phần này.
+
+---
+
+## Bước 6 — Đăng bản cập nhật OneTools mới (file .exe)
+
+1. Chạy thêm file `sql/schema_releases.sql` trong Supabase SQL Editor (chỉ cần chạy 1 lần, sau khi đã chạy `schema.sql`) — tạo bảng `releases` và nơi lưu file (Storage bucket `installers`)
+2. Vào `/admin` → tab **"Bản cập nhật"**
+3. Chọn file `.exe` vừa build (Inno Setup xuất ra), nhập số phiên bản, chọn phiên bản Revit hỗ trợ, viết changelog
+4. Tick **"Đặt làm bản mới nhất"** (mặc định đã tick sẵn)
+5. Bấm **"Tải lên & Đăng"**
+
+Ngay sau đó, khối "Tải OneTools Setup" trên trang chủ sẽ tự động hiển thị đúng version, dung lượng, ngày phát hành, và nút "Tải về" sẽ trỏ thẳng tới file thật — không cần sửa code, không cần deploy lại.
+
+**Muốn đổi bản nào là "mới nhất"** (ví dụ muốn rollback về bản cũ hơn): vào bảng danh sách bên dưới form, bấm "Đặt làm mới nhất" ở dòng bản muốn dùng — hệ thống tự động bỏ đánh dấu bản cũ.
+
+**Lưu ý dung lượng:** Supabase Storage miễn phí (gói Free) giới hạn 1GB tổng dung lượng lưu trữ — installer OneTools nếu chỉ vài chục MB thì chứa được rất nhiều bản, không đáng lo trong giai đoạn đầu.
+

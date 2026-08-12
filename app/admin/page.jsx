@@ -89,9 +89,14 @@ export default function AdminPage() {
         <button className={tab === "pricing" ? "active" : ""} onClick={() => setTab("pricing")}>
           Gói giá
         </button>
+        <button className={tab === "releases" ? "active" : ""} onClick={() => setTab("releases")}>
+          Bản cập nhật
+        </button>
       </nav>
       <main className="admin-main">
-        {tab === "videos" ? <VideosManager /> : <PricingManager />}
+        {tab === "videos" && <VideosManager />}
+        {tab === "pricing" && <PricingManager />}
+        {tab === "releases" && <ReleasesManager />}
       </main>
     </div>
   );
@@ -366,6 +371,171 @@ function PlanForm({ form, setForm, onSave, onCancel, saving }) {
         <button className="btn-primary" onClick={onSave} disabled={saving}>{saving ? "Đang lưu..." : "Lưu"}</button>
         <button className="btn-ghost" onClick={onCancel}>Huỷ</button>
       </div>
+    </div>
+  );
+}
+
+// =====================================================================
+// QUẢN LÝ BẢN CẬP NHẬT (upload file cài đặt + thông tin phiên bản)
+// =====================================================================
+const EMPTY_RELEASE = {
+  version: "",
+  revit_versions: "2025 · 2026",
+  release_notes_vi: "",
+  release_notes_en: "",
+  is_latest: true,
+};
+
+function ReleasesManager() {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState(EMPTY_RELEASE);
+  const [file, setFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadMsg, setUploadMsg] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data } = await supabase.from("releases").select("*").order("published_at", { ascending: false });
+    setRows(data || []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleUpload = async (e) => {
+    e.preventDefault();
+    if (!file) {
+      setUploadMsg("Chưa chọn file .exe nào.");
+      return;
+    }
+    if (!form.version.trim()) {
+      setUploadMsg("Cần nhập số phiên bản (vd 1.5.0).");
+      return;
+    }
+
+    setUploading(true);
+    setUploadMsg("Đang tải file lên...");
+
+    try {
+      // Đặt tên file trong Storage có kèm version để không bị trùng/ghi đè bản cũ
+      const path = `OneToolsSetup_v${form.version.trim()}_${Date.now()}.exe`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("installers")
+        .upload(path, file, { upsert: false });
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage.from("installers").getPublicUrl(path);
+      const downloadUrl = publicUrlData.publicUrl;
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+
+      const { error: insertError } = await supabase.from("releases").insert([
+        {
+          version: form.version.trim(),
+          file_name: file.name,
+          download_url: downloadUrl,
+          file_size_mb: Number(sizeMb),
+          revit_versions: form.revit_versions,
+          release_notes_vi: form.release_notes_vi,
+          release_notes_en: form.release_notes_en,
+          is_latest: form.is_latest,
+        },
+      ]);
+
+      if (insertError) throw insertError;
+
+      setUploadMsg("Đã đăng bản cập nhật thành công.");
+      setForm(EMPTY_RELEASE);
+      setFile(null);
+      load();
+    } catch (err) {
+      setUploadMsg("Lỗi: " + err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const markLatest = async (id) => {
+    await supabase.from("releases").update({ is_latest: true }).eq("id", id);
+    load();
+  };
+
+  const remove = async (row) => {
+    if (!confirm(`Xoá bản ${row.version}? File trong Storage sẽ không tự xoá theo, cần xoá thủ công nếu muốn dọn dẹp.`)) return;
+    await supabase.from("releases").delete().eq("id", row.id);
+    load();
+  };
+
+  return (
+    <div>
+      <div className="admin-form">
+        <h3 style={{ marginTop: 0 }}>Đăng bản cập nhật mới</h3>
+        <div className="form-row">
+          <label>File cài đặt (.exe)</label>
+          <input type="file" accept=".exe" onChange={(e) => setFile(e.target.files[0])} />
+        </div>
+        <div className="form-row">
+          <label>Số phiên bản (vd 1.5.0)</label>
+          <input value={form.version} onChange={(e) => setForm({ ...form, version: e.target.value })} />
+        </div>
+        <div className="form-row">
+          <label>Phiên bản Revit hỗ trợ</label>
+          <input value={form.revit_versions} onChange={(e) => setForm({ ...form, revit_versions: e.target.value })} />
+        </div>
+        <div className="form-row">
+          <label>Changelog (Tiếng Việt)</label>
+          <textarea value={form.release_notes_vi} onChange={(e) => setForm({ ...form, release_notes_vi: e.target.value })} />
+        </div>
+        <div className="form-row">
+          <label>Changelog (English)</label>
+          <textarea value={form.release_notes_en} onChange={(e) => setForm({ ...form, release_notes_en: e.target.value })} />
+        </div>
+        <div className="form-row checkbox">
+          <label>
+            <input
+              type="checkbox"
+              checked={form.is_latest}
+              onChange={(e) => setForm({ ...form, is_latest: e.target.checked })}
+            />
+            Đặt làm bản mới nhất (nút "Tải về" trên web sẽ trỏ tới bản này)
+          </label>
+        </div>
+        <div className="form-actions">
+          <button className="btn-primary" onClick={handleUpload} disabled={uploading}>
+            {uploading ? "Đang xử lý..." : "Tải lên & Đăng"}
+          </button>
+        </div>
+        {uploadMsg && <p style={{ fontSize: 13, marginTop: 10, color: "#C9A15F" }}>{uploadMsg}</p>}
+      </div>
+
+      {loading ? (
+        <p>Đang tải...</p>
+      ) : (
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>Phiên bản</th><th>File</th><th>Dung lượng</th><th>Mới nhất</th><th>Ngày đăng</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.id}>
+                <td>{r.version}</td>
+                <td className="mono">{r.file_name}</td>
+                <td>{r.file_size_mb} MB</td>
+                <td>{r.is_latest ? "✓" : "—"}</td>
+                <td>{new Date(r.published_at).toLocaleDateString("vi-VN")}</td>
+                <td className="actions">
+                  {!r.is_latest && <button onClick={() => markLatest(r.id)}>Đặt làm mới nhất</button>}
+                  <button className="danger" onClick={() => remove(r)}>Xoá</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

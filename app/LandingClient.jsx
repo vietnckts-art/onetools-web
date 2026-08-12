@@ -247,7 +247,7 @@ function LangToggle() {
   );
 }
 
-function OneToolsLandingInner({ videos, plans }) {
+function OneToolsLandingInner({ videos, plans, release }) {
   const [billingAnnual, setBillingAnnual] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [user, setUser] = useState(null);
@@ -554,6 +554,8 @@ function OneToolsLandingInner({ videos, plans }) {
           transition: opacity 0.15s;
         }
         .download-btn:hover { opacity: 0.88; }
+        .download-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .download-btn { text-decoration: none; }
         .download-btn-arrow { font-size: 15px; }
         .download-meta {
           display: flex;
@@ -905,21 +907,38 @@ function OneToolsLandingInner({ videos, plans }) {
               </div>
               <div className="download-copy">
                 <div className="download-title display">{t.download.title}</div>
-                <div className="download-sub mono">{t.download.sub}</div>
+                <div className="download-sub mono">
+                  {release
+                    ? `v${release.version} · Windows x64 · ${release.file_size_mb} MB`
+                    : t.download.sub}
+                </div>
               </div>
-              <button className="download-btn">
-                {t.download.btn}
-                <span className="download-btn-arrow">↓</span>
-              </button>
+              {release ? (
+                <a className="download-btn" href={release.download_url}>
+                  {t.download.btn}
+                  <span className="download-btn-arrow">↓</span>
+                </a>
+              ) : (
+                <button className="download-btn" disabled>
+                  {t.download.btn}
+                  <span className="download-btn-arrow">↓</span>
+                </button>
+              )}
             </div>
             <div className="download-meta">
               <div className="download-meta-item">
                 <span className="download-meta-label mono">{t.download.revitLabel}</span>
-                <span className="download-meta-value">{t.download.revitValue}</span>
+                <span className="download-meta-value">
+                  {release ? release.revit_versions : t.download.revitValue}
+                </span>
               </div>
               <div className="download-meta-item">
                 <span className="download-meta-label mono">{t.download.updatedLabel}</span>
-                <span className="download-meta-value">{t.download.updatedValue}</span>
+                <span className="download-meta-value">
+                  {release
+                    ? new Date(release.published_at).toLocaleDateString(lang === "vi" ? "vi-VN" : "en-US")
+                    : t.download.updatedValue}
+                </span>
               </div>
               <div className="download-meta-item">
                 <span className="download-meta-label mono">{t.download.licenseLabel}</span>
@@ -1016,7 +1035,7 @@ function OneToolsLandingInner({ videos, plans }) {
   );
 }
 
-export default function OneToolsLanding({ videos, plans }) {
+export default function OneToolsLanding({ videos, plans, release }) {
   const [lang, setLangState] = useState("vi");
   const [mounted, setMounted] = useState(false);
 
@@ -1036,7 +1055,7 @@ export default function OneToolsLanding({ videos, plans }) {
 
   return (
     <LangContext.Provider value={{ lang, t: DICT[lang], setLang }}>
-      <OneToolsLandingInner videos={videos} plans={plans} />
+      <OneToolsLandingInner videos={videos} plans={plans} release={release} />
     </LangContext.Provider>
   );
 }
