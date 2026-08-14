@@ -343,7 +343,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
           font-family: 'Oswald', sans-serif;
           text-transform: uppercase;
           font-weight: 600;
-          font-size: 16px;
+          font-size: 26px;
           letter-spacing: 0.04em;
         }
         .nav-brand-mark {
@@ -612,7 +612,21 @@ function OneToolsLandingInner({ videos, plans, release }) {
         }
         .btn-ghost:hover { border-color: var(--text-dim); }
 
-        .dim-hero-svg { width: 100%; max-width: 720px; height: auto; display: block; }
+        .dim-hero-svg { width: 100%; max-width: 720px; height: auto; display: block; margin-bottom: 28px; }
+        .hero-ribbon-frame {
+          max-width: 720px;
+          border: 1px solid var(--line);
+          background: var(--bg-raised);
+          padding: 14px;
+          margin-top: 24px;
+          overflow-x: auto;
+        }
+        .hero-ribbon-frame img {
+          display: block;
+          width: 100%;
+          height: auto;
+          min-width: 560px;
+        }
 
         /* ---------- Stats strip ---------- */
         .stats {
@@ -640,27 +654,6 @@ function OneToolsLandingInner({ videos, plans, release }) {
 
         /* ---------- Section heading ---------- */
         .section { padding: 72px 0; border-bottom: 1px solid var(--line); }
-        .theme-showcase { padding: 40px 0; }
-        .theme-showcase-label {
-          font-size: 11px;
-          color: var(--accent);
-          letter-spacing: 0.2em;
-          text-transform: uppercase;
-          text-align: center;
-          margin-bottom: 18px;
-        }
-        .theme-showcase-frame {
-          border: 1px solid var(--line);
-          background: var(--bg-raised);
-          padding: 16px;
-          overflow-x: auto;
-        }
-        .theme-showcase-frame img {
-          display: block;
-          width: 100%;
-          height: auto;
-          min-width: 600px;
-        }
         .section-head {
           display: flex;
           justify-content: space-between;
@@ -863,7 +856,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
 
         @media (max-width: 380px) {
           .nav-inner { padding: 14px 16px; }
-          .nav-brand { font-size: 14px; }
+          .nav-brand { font-size: 20px; }
           .lang-toggle button { padding: 5px 8px; font-size: 11px; }
         }
       `}</style>
@@ -940,6 +933,8 @@ function OneToolsLandingInner({ videos, plans, release }) {
             <button className="btn-ghost">{t.hero.ctaGhost}</button>
           </div>
 
+          <DimensionHero />
+
           <div className="download-card">
             <div className="download-main">
               <div className="download-icon">
@@ -991,7 +986,9 @@ function OneToolsLandingInner({ videos, plans, release }) {
             </div>
           </div>
 
-          <DimensionHero />
+          <div className="hero-ribbon-frame">
+            <img src="/ribbon-lightdark.png" alt="OneTools ribbon - Light and Dark Mode" />
+          </div>
         </div>
       </header>
 
@@ -1003,15 +1000,6 @@ function OneToolsLandingInner({ videos, plans, release }) {
           </div>
         ))}
       </div>
-
-      <section className="section theme-showcase">
-        <div className="container">
-          <div className="theme-showcase-label mono">Light/Dark Mode</div>
-          <div className="theme-showcase-frame">
-            <img src="/ribbon-lightdark.png" alt="OneTools ribbon - Light and Dark Mode" />
-          </div>
-        </div>
-      </section>
 
       <section className="section" id="tools">
         <div className="container">
