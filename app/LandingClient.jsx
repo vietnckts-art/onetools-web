@@ -10,13 +10,12 @@ import { supabase } from "../lib/supabaseClient";
 // =====================================================================
 const DICT = {
   vi: {
-    nav: { tools: "Video hướng dẫn", pricing: "Bảng giá", docs: "Tài liệu", login: "Đăng nhập" },
+    nav: { tools: "Video hướng dẫn", pricing: "Bảng giá", docs: "Liên hệ", login: "Đăng nhập" },
     hero: {
-      eyebrow: "Add-in cho Revit 2025 / 2026",
-      titleLine1: "Dim tự động, đúng trục,",
-      titleLine2Pre: "không lệ thuộc ",
-      titleLine2Accent: "thao tác tay",
-      desc: "OneTools là bộ công cụ Revit dành cho ONE Architecture — tự động hoá dimension cột, vách, cọc và các thao tác lặp lại khác, để bạn dành thời gian cho thiết kế thay vì kéo dim thủ công.",
+      eyebrow: "Add-in cho Revit",
+      titleAccent: "MỘT BỘ CÔNG CỤ",
+      titleWhite: "MỌI GIẢI PHÁP BIM",
+      desc: "OneTools - bộ giải pháp tất cả trong một, tự động hóa từ những chi tiết nhỏ nhất đến quy trình triển khai phức tạp. Giải phóng bạn khỏi công việc lặp lại nhàn chán để tập trung hoàn toàn vào thiết kế.",
       ctaPrimary: "Xem gói đăng ký",
       ctaGhost: "Xem video hướng dẫn",
     },
@@ -25,16 +24,16 @@ const DICT = {
       sub: "v1.4.2 · Windows x64 · 18.3 MB",
       btn: "Tải về",
       revitLabel: "Revit",
-      revitValue: "2025 · 2026",
+      revitValue: "2025 · 2026 · 2027",
       updatedLabel: "Cập nhật",
       updatedValue: "05/08/2026",
       licenseLabel: "Giấy phép",
-      licenseValue: "Cần license active",
+      licenseValue: "Dùng thử 15 ngày",
       guideLink: "Hướng dẫn cài đặt →",
     },
     stats: [
-      { num: "04", label: "Công cụ đang hoạt động" },
-      { num: "2025", label: "Phiên bản Revit hỗ trợ" },
+      { num: "30", label: "Công cụ đang hoạt động" },
+      { num: "2025.2026.2027", label: "Phiên bản Revit hỗ trợ" },
       { num: "VI / EN", label: "Giao diện song ngữ" },
       { num: "24h", label: "Thời gian phản hồi hỗ trợ" },
     ],
@@ -57,13 +56,12 @@ const DICT = {
   },
 
   en: {
-    nav: { tools: "Tutorials", pricing: "Pricing", docs: "Docs", login: "Log in" },
+    nav: { tools: "Tutorials", pricing: "Pricing", docs: "Contact", login: "Log in" },
     hero: {
-      eyebrow: "Add-in for Revit 2025 / 2026",
-      titleLine1: "Automatic dimensioning,",
-      titleLine2Pre: "no more ",
-      titleLine2Accent: "manual dragging",
-      desc: "OneTools is a Revit toolset built for ONE Architecture — automating dimensioning for columns, walls, piles, and other repetitive tasks, so you spend time designing instead of dragging dimension lines.",
+      eyebrow: "Add-in for Revit",
+      titleAccent: "ONE TOOLSET",
+      titleWhite: "EVERY BIM SOLUTION",
+      desc: "OneTools is an all-in-one solution that automates everything from the smallest details to complex deployment workflows — freeing you from tedious repetitive work so you can focus entirely on design.",
       ctaPrimary: "View plans",
       ctaGhost: "Watch tutorials",
     },
@@ -72,16 +70,16 @@ const DICT = {
       sub: "v1.4.2 · Windows x64 · 18.3 MB",
       btn: "Download",
       revitLabel: "Revit",
-      revitValue: "2025 · 2026",
+      revitValue: "2025 · 2026 · 2027",
       updatedLabel: "Updated",
       updatedValue: "Aug 5, 2026",
       licenseLabel: "License",
-      licenseValue: "Active license required",
+      licenseValue: "15-day free trial",
       guideLink: "Installation guide →",
     },
     stats: [
-      { num: "04", label: "Active tools" },
-      { num: "2025", label: "Revit version supported" },
+      { num: "30", label: "Active tools" },
+      { num: "2025.2026.2027", label: "Revit version supported" },
       { num: "VI / EN", label: "Bilingual interface" },
       { num: "24h", label: "Support response time" },
     ],
@@ -162,7 +160,7 @@ function DimensionHero() {
         y1={y}
         x2={xs[0] + (xs[xs.length - 1] - xs[0]) * progress}
         y2={y}
-        stroke="#C9A15F"
+        stroke="#C2A47C"
         strokeWidth="1.5"
       />
       {xs.slice(0, -1).map((x, i) => {
@@ -190,7 +188,7 @@ function DimensionHero() {
           cx={x}
           cy={y}
           r="2.5"
-          fill="#C9A15F"
+          fill="#C2A47C"
           style={{
             opacity: progress > i / xs.length ? 1 : 0,
             transition: "opacity 0.3s ease",
@@ -221,8 +219,8 @@ function VideoCard({ tool }) {
         ) : (
           <button className="video-play-btn" onClick={() => setPlaying(true)} aria-label={t.tools.watchLabel(tool.name)}>
             <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
-              <circle cx="26" cy="26" r="25" stroke="#C9A15F" strokeWidth="1.5" />
-              <path d="M21 16L36 26L21 36V16Z" fill="#C9A15F" />
+              <circle cx="26" cy="26" r="25" stroke="#C2A47C" strokeWidth="1.5" />
+              <path d="M21 16L36 26L21 36V16Z" fill="#C2A47C" />
             </svg>
           </button>
         )}
@@ -292,14 +290,14 @@ function OneToolsLandingInner({ videos, plans, release }) {
         @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 
         .ot-root {
-          --bg: #161512;
-          --bg-raised: #1F1D19;
-          --line: #37342C;
-          --line-soft: #2A2822;
-          --text: #F3EFE6;
-          --text-dim: #A79E8C;
-          --accent: #C9A15F;
-          --accent-dim: #8A7248;
+          --bg: #292929;
+          --bg-raised: #323232;
+          --line: #454545;
+          --line-soft: #3A3A3A;
+          --text: #FFFFFF;
+          --text-dim: #B5AA9A;
+          --accent: #C2A47C;
+          --accent-dim: #8F7A5C;
           --warn: #D6803A;
           font-family: 'Inter', -apple-system, sans-serif;
           background: var(--bg);
@@ -326,7 +324,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
           border-bottom: 1px solid var(--line);
           position: sticky;
           top: 0;
-          background: rgba(22,21,18,0.92);
+          background: rgba(38,35,29,0.96);
           backdrop-filter: blur(8px);
           z-index: 10;
         }
@@ -349,8 +347,8 @@ function OneToolsLandingInner({ videos, plans, release }) {
           letter-spacing: 0.04em;
         }
         .nav-brand-mark {
-          width: 51px;
-          height: 51px;
+          width: 77px;
+          height: 77px;
           display: block;
           object-fit: contain;
         }
@@ -394,7 +392,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
           cursor: pointer;
           letter-spacing: 0.04em;
         }
-        .lang-toggle button.active { background: var(--accent); color: #161512; }
+        .lang-toggle button.active { background: var(--accent); color: #292929; }
         .nav-cta {
           font-size: 13px;
           font-family: 'JetBrains Mono', monospace;
@@ -407,7 +405,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
           text-decoration: none;
           display: inline-block;
         }
-        .nav-cta:hover { background: var(--accent); color: #161512; }
+        .nav-cta:hover { background: var(--accent); color: #292929; }
 
         .nav-burger {
           display: none;
@@ -476,7 +474,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
           text-transform: uppercase;
           font-size: 52px;
           font-weight: 700;
-          line-height: 1.08;
+          line-height: 1.35;
           margin: 0 0 20px;
           letter-spacing: 0.005em;
           max-width: 720px;
@@ -485,8 +483,9 @@ function OneToolsLandingInner({ videos, plans, release }) {
         .hero p {
           font-size: 17px;
           color: var(--text-dim);
-          max-width: 540px;
+          max-width: 720px;
           margin: 0 0 32px;
+          text-align: justify;
         }
         .hero-actions { display: flex; gap: 14px; margin-bottom: 56px; }
 
@@ -494,7 +493,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
         .download-card {
           border: 1.5px solid var(--accent);
           background: var(--bg-raised);
-          margin-bottom: 48px;
+          margin: 0 0 48px;
           max-width: 720px;
           position: relative;
         }
@@ -595,7 +594,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
           font-weight: 600;
           padding: 13px 24px;
           background: var(--accent);
-          color: #161512;
+          color: #292929;
           border: none;
           cursor: pointer;
           transition: opacity 0.15s;
@@ -613,7 +612,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
         }
         .btn-ghost:hover { border-color: var(--text-dim); }
 
-        .dim-hero-svg { width: 100%; height: auto; display: block; }
+        .dim-hero-svg { width: 100%; max-width: 720px; height: auto; display: block; }
 
         /* ---------- Stats strip ---------- */
         .stats {
@@ -628,9 +627,10 @@ function OneToolsLandingInner({ videos, plans, release }) {
         .stat:last-child { border-right: none; }
         .stat-num {
           font-family: 'Oswald', sans-serif;
-          font-size: 30px;
+          font-size: clamp(15px, 3vw, 30px);
           font-weight: 700;
           color: var(--accent);
+          white-space: nowrap;
         }
         .stat-label {
           font-size: 12.5px;
@@ -640,6 +640,27 @@ function OneToolsLandingInner({ videos, plans, release }) {
 
         /* ---------- Section heading ---------- */
         .section { padding: 72px 0; border-bottom: 1px solid var(--line); }
+        .theme-showcase { padding: 40px 0; }
+        .theme-showcase-label {
+          font-size: 11px;
+          color: var(--accent);
+          letter-spacing: 0.2em;
+          text-transform: uppercase;
+          text-align: center;
+          margin-bottom: 18px;
+        }
+        .theme-showcase-frame {
+          border: 1px solid var(--line);
+          background: var(--bg-raised);
+          padding: 16px;
+          overflow-x: auto;
+        }
+        .theme-showcase-frame img {
+          display: block;
+          width: 100%;
+          height: auto;
+          min-width: 600px;
+        }
         .section-head {
           display: flex;
           justify-content: space-between;
@@ -741,7 +762,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
           color: var(--text-dim);
           cursor: pointer;
         }
-        .billing-toggle button.active { background: var(--accent); color: #161512; }
+        .billing-toggle button.active { background: var(--accent); color: #292929; }
 
         .pricing-grid {
           display: grid;
@@ -782,7 +803,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
           cursor: pointer;
           transition: all 0.15s;
         }
-        .plan.highlight .plan-btn { background: var(--accent); color: #161512; border-color: var(--accent); }
+        .plan.highlight .plan-btn { background: var(--accent); color: #292929; border-color: var(--accent); }
         .plan-btn:hover { border-color: var(--accent); }
 
         /* ---------- Footer ---------- */
@@ -795,6 +816,28 @@ function OneToolsLandingInner({ videos, plans, release }) {
           color: var(--text-dim);
         }
         .footer .mono { color: var(--text-dim); }
+        .social-bar {
+          display: flex;
+          gap: 14px;
+          padding-top: 32px;
+          border-top: 1px solid var(--line);
+        }
+        .social-icon {
+          width: 38px;
+          height: 38px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid var(--line);
+          color: var(--text-dim);
+          text-decoration: none;
+          transition: all 0.15s;
+        }
+        .social-icon:hover {
+          color: var(--bg);
+          background: var(--accent);
+          border-color: var(--accent);
+        }
 
         @media (max-width: 860px) {
           .nav-links-desktop,
@@ -889,7 +932,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
         <div className="container">
           <div className="hero-eyebrow">{t.hero.eyebrow}</div>
           <h1>
-            {t.hero.titleLine1}<br />{t.hero.titleLine2Pre}<span>{t.hero.titleLine2Accent}</span>.
+            <span>{t.hero.titleAccent}</span><br />{t.hero.titleWhite}
           </h1>
           <p>{t.hero.desc}</p>
           <div className="hero-actions">
@@ -901,8 +944,8 @@ function OneToolsLandingInner({ videos, plans, release }) {
             <div className="download-main">
               <div className="download-icon">
                 <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
-                  <path d="M15 3V19M15 19L9 13M15 19L21 13" stroke="#161512" strokeWidth="2" strokeLinecap="square" />
-                  <path d="M5 24H25" stroke="#161512" strokeWidth="2" strokeLinecap="square" />
+                  <path d="M15 3V19M15 19L9 13M15 19L21 13" stroke="#292929" strokeWidth="2" strokeLinecap="square" />
+                  <path d="M5 24H25" stroke="#292929" strokeWidth="2" strokeLinecap="square" />
                 </svg>
               </div>
               <div className="download-copy">
@@ -961,6 +1004,15 @@ function OneToolsLandingInner({ videos, plans, release }) {
         ))}
       </div>
 
+      <section className="section theme-showcase">
+        <div className="container">
+          <div className="theme-showcase-label mono">Light/Dark Mode</div>
+          <div className="theme-showcase-frame">
+            <img src="/ribbon-lightdark.png" alt="OneTools ribbon - Light and Dark Mode" />
+          </div>
+        </div>
+      </section>
+
       <section className="section" id="tools">
         <div className="container">
           <div className="section-head">
@@ -968,7 +1020,6 @@ function OneToolsLandingInner({ videos, plans, release }) {
               <div className="section-tag">{t.tools.tag}</div>
               <h2>{t.tools.title}</h2>
             </div>
-            <p className="section-desc">{t.tools.desc}</p>
           </div>
           <div className="video-grid">
             {toolItems.length > 0 ? (
@@ -1026,6 +1077,31 @@ function OneToolsLandingInner({ videos, plans, release }) {
           </div>
         </div>
       </section>
+
+      <div className="social-bar container">
+        <a href="#" aria-label="YouTube" className="social-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M22 12s0-3.2-.4-4.7c-.2-.9-.9-1.6-1.8-1.8C18.1 5 12 5 12 5s-6.1 0-7.8.5c-.9.2-1.6.9-1.8 1.8C2 8.8 2 12 2 12s0 3.2.4 4.7c.2.9.9 1.6 1.8 1.8C5.9 19 12 19 12 19s6.1 0 7.8-.5c.9-.2 1.6-.9 1.8-1.8.4-1.5.4-4.7.4-4.7z" stroke="currentColor" strokeWidth="1.6"/>
+            <path d="M10 9.5l5 2.5-5 2.5v-5z" fill="currentColor"/>
+          </svg>
+        </a>
+        <a href="#" aria-label="Facebook" className="social-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M15 8.5h2V5.5h-2c-2 0-3.5 1.6-3.5 3.5v2H9.5v3H11.5v7h3v-7h2l.5-3H14.5v-2c0-.3.2-.5.5-.5z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/>
+          </svg>
+        </a>
+        <a href="#" aria-label="Email" className="social-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <rect x="3" y="5.5" width="18" height="13" rx="1.5" stroke="currentColor" strokeWidth="1.6"/>
+            <path d="M4 7l8 6 8-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </a>
+        <a href="#" aria-label="Phone" className="social-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M6 3.5h3l1.5 4-2 1.5c.8 2 2.2 3.4 4.2 4.2l1.5-2 4 1.5v3c0 1-.8 1.8-1.8 1.7C10.9 17 7 13.1 6.3 7.3 6.2 6.3 5 5.5 6 5.5V3.5z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/>
+          </svg>
+        </a>
+      </div>
 
       <footer className="footer container">
         <span className="mono">{t.footer.rights}</span>
