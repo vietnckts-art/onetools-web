@@ -32,7 +32,7 @@ const DICT = {
       guideLink: "Hướng dẫn cài đặt →",
     },
     stats: [
-      { num: "30", label: "Công cụ đang hoạt động" },
+      { num: "50", label: "Công cụ đang hoạt động" },
       { num: "2025.2026.2027", label: "Phiên bản Revit hỗ trợ" },
       { num: "VI / EN", label: "Giao diện song ngữ" },
       { num: "24h", label: "Thời gian phản hồi hỗ trợ" },
@@ -78,7 +78,7 @@ const DICT = {
       guideLink: "Installation guide →",
     },
     stats: [
-      { num: "30", label: "Active tools" },
+      { num: "50", label: "Active tools" },
       { num: "2025.2026.2027", label: "Revit version supported" },
       { num: "VI / EN", label: "Bilingual interface" },
       { num: "24h", label: "Support response time" },
@@ -494,7 +494,6 @@ function OneToolsLandingInner({ videos, plans, release }) {
           border: 1.5px solid var(--accent);
           background: var(--bg-raised);
           margin: 0 0 28px;
-          max-width: 720px;
           position: relative;
         }
         .download-card::before {
@@ -612,9 +611,8 @@ function OneToolsLandingInner({ videos, plans, release }) {
         }
         .btn-ghost:hover { border-color: var(--text-dim); }
 
-        .dim-hero-svg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 0 28px; }
+        .dim-hero-svg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto 28px; }
         .hero-ribbon-frame {
-          max-width: 720px;
           border: 1px solid var(--line);
           background: var(--bg-raised);
           padding: 14px;
