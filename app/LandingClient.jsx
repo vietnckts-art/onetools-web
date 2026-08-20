@@ -483,7 +483,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
         .hero p {
           font-size: 17px;
           color: var(--text-dim);
-          max-width: 720px;
+          max-width: 50%;
           margin: 0 0 32px;
           text-align: justify;
         }
@@ -839,6 +839,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
 
         @media (max-width: 720px) {
           .hero h1 { font-size: 32px; }
+          .hero p { max-width: 100%; }
           .stats { grid-template-columns: repeat(2, 1fr); }
           .stat:nth-child(2) { border-right: none; }
           .video-grid, .pricing-grid { grid-template-columns: 1fr; }
