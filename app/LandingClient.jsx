@@ -12,10 +12,10 @@ const DICT = {
   vi: {
     nav: { tools: "Video hướng dẫn", pricing: "Bảng giá", docs: "Liên hệ", login: "Đăng nhập" },
     hero: {
-      eyebrow: "Add-in cho Revit",
-      titleAccent: "MỘT BỘ CÔNG CỤ",
-      titleWhite: "MỌI GIẢI PHÁP BIM",
-      desc: "OneTools - bộ giải pháp tất cả trong một, tự động hóa từ những chi tiết nhỏ nhất đến quy trình triển khai phức tạp. Giải phóng bạn khỏi công việc lặp lại nhàn chán để tập trung hoàn toàn vào thiết kế.",
+      eyebrow: "Add-in cho Revit | BIM",
+      titleAccent: "MỘT CÔNG CỤ",
+      titleWhite: "MỌI GIẢI PHÁP",
+      desc: "OneTools - bộ giải pháp tất cả trong một, tự động hóa từ những chi tiết nhỏ nhất đến quy trình triển khai phức tạp. Giải phóng bạn khỏi công việc lặp lại nhàm chán để tập trung hoàn toàn vào thiết kế.",
       ctaPrimary: "Xem gói đăng ký",
       ctaGhost: "Xem video hướng dẫn",
     },
@@ -58,9 +58,9 @@ const DICT = {
   en: {
     nav: { tools: "Tutorials", pricing: "Pricing", docs: "Contact", login: "Log in" },
     hero: {
-      eyebrow: "Add-in for Revit",
+      eyebrow: "Add-in for Revit | BIM",
       titleAccent: "ONE TOOLSET",
-      titleWhite: "EVERY BIM SOLUTION",
+      titleWhite: "EVERY SOLUTION",
       desc: "OneTools is an all-in-one solution that automates everything from the smallest details to complex deployment workflows — freeing you from tedious repetitive work so you can focus entirely on design.",
       ctaPrimary: "View plans",
       ctaGhost: "Watch tutorials",
@@ -165,7 +165,7 @@ function DimensionHero() {
       />
       {xs.slice(0, -1).map((x, i) => {
         const segMid = (xs[i] + xs[i + 1]) / 2;
-        const segLen = xs[i + 1] - xs[i];
+        const yearLabels = ["2025", "2026", "2027"];
         const show = progress > (i + 1) / xs.length - 0.05;
         return (
           <g key={`seg-${i}`} style={{ opacity: show ? 1 : 0, transition: "opacity 0.4s ease" }}>
@@ -177,7 +177,7 @@ function DimensionHero() {
               fontFamily="'JetBrains Mono', monospace"
               fontSize="13"
             >
-              {segLen * 10}
+              {yearLabels[i]}
             </text>
           </g>
         );
@@ -493,7 +493,8 @@ function OneToolsLandingInner({ videos, plans, release }) {
         .download-card {
           border: 1.5px solid var(--accent);
           background: var(--bg-raised);
-          margin: 0 0 48px;
+          margin: 0 0 28px;
+          max-width: 720px;
           position: relative;
         }
         .download-card::before {
@@ -611,8 +612,9 @@ function OneToolsLandingInner({ videos, plans, release }) {
         }
         .btn-ghost:hover { border-color: var(--text-dim); }
 
-        .dim-hero-svg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto 28px; }
+        .dim-hero-svg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 0 28px; }
         .hero-ribbon-frame {
+          max-width: 720px;
           border: 1px solid var(--line);
           background: var(--bg-raised);
           padding: 14px;
@@ -929,8 +931,6 @@ function OneToolsLandingInner({ videos, plans, release }) {
             <button className="btn-ghost">{t.hero.ctaGhost}</button>
           </div>
 
-          <DimensionHero />
-
           <div className="download-card">
             <div className="download-main">
               <div className="download-icon">
@@ -981,6 +981,8 @@ function OneToolsLandingInner({ videos, plans, release }) {
               <a className="download-meta-link" href="#">{t.download.guideLink}</a>
             </div>
           </div>
+
+          <DimensionHero />
 
           <div className="hero-ribbon-frame">
             <img src="/ribbon-lightdark.png" alt="OneTools ribbon - Light and Dark Mode" />
@@ -1063,24 +1065,24 @@ function OneToolsLandingInner({ videos, plans, release }) {
       </section>
 
       <div className="social-bar container">
-        <a href="#" aria-label="YouTube" className="social-icon">
+        <a href="https://www.youtube.com/channel/UCU_XrxQWA4m-3sylSzsBULg" target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="social-icon">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
             <path d="M22 12s0-3.2-.4-4.7c-.2-.9-.9-1.6-1.8-1.8C18.1 5 12 5 12 5s-6.1 0-7.8.5c-.9.2-1.6.9-1.8 1.8C2 8.8 2 12 2 12s0 3.2.4 4.7c.2.9.9 1.6 1.8 1.8C5.9 19 12 19 12 19s6.1 0 7.8-.5c.9-.2 1.6-.9 1.8-1.8.4-1.5.4-4.7.4-4.7z" stroke="currentColor" strokeWidth="1.6"/>
             <path d="M10 9.5l5 2.5-5 2.5v-5z" fill="currentColor"/>
           </svg>
         </a>
-        <a href="#" aria-label="Facebook" className="social-icon">
+        <a href="https://www.facebook.com/OneTools-BIM/" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="social-icon">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
             <path d="M15 8.5h2V5.5h-2c-2 0-3.5 1.6-3.5 3.5v2H9.5v3H11.5v7h3v-7h2l.5-3H14.5v-2c0-.3.2-.5.5-.5z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/>
           </svg>
         </a>
-        <a href="#" aria-label="Email" className="social-icon">
+        <a href="mailto:onetools.bim@gmail.com" aria-label="Email" className="social-icon">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
             <rect x="3" y="5.5" width="18" height="13" rx="1.5" stroke="currentColor" strokeWidth="1.6"/>
             <path d="M4 7l8 6 8-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </a>
-        <a href="#" aria-label="Phone" className="social-icon">
+        <a href="tel:+84945363468" aria-label="Phone" className="social-icon">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
             <path d="M6 3.5h3l1.5 4-2 1.5c.8 2 2.2 3.4 4.2 4.2l1.5-2 4 1.5v3c0 1-.8 1.8-1.8 1.7C10.9 17 7 13.1 6.3 7.3 6.2 6.3 5 5.5 6 5.5V3.5z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/>
           </svg>
