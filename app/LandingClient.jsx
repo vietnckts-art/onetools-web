@@ -355,7 +355,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
           letter-spacing: 0.01em;
         }
         .ot-root * { box-sizing: border-box; }
-        .mono { font-family: 'JetBrains Mono', monospace; }
+        .mono { font-family: 'Inter', -apple-system, sans-serif; }
 
         .container {
           max-width: 1080px;
@@ -425,7 +425,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
         .lang-toggle {
           display: inline-flex;
           border: 1px solid var(--line);
-          font-family: 'JetBrains Mono', monospace;
+          font-family: 'Inter', -apple-system, sans-serif;
           font-size: 12px;
         }
         .lang-toggle button {
@@ -439,7 +439,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
         .lang-toggle button.active { background: var(--accent); color: #292929; }
         .nav-cta {
           font-size: 13px;
-          font-family: 'JetBrains Mono', monospace;
+          font-family: 'Inter', -apple-system, sans-serif;
           padding: 8px 16px;
           border: 1px solid var(--accent);
           color: var(--accent);
@@ -497,7 +497,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
           border-bottom: 1px solid var(--line);
         }
         .hero-eyebrow {
-          font-family: 'JetBrains Mono', monospace;
+          font-family: 'Inter', -apple-system, sans-serif;
           font-size: 12px;
           color: var(--accent);
           letter-spacing: 0.28em;
@@ -546,7 +546,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
           position: absolute;
           top: -1px;
           right: -1px;
-          font-family: 'JetBrains Mono', monospace;
+          font-family: 'Inter', -apple-system, sans-serif;
           font-size: 10px;
           letter-spacing: 0.15em;
           color: var(--bg);
@@ -582,7 +582,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
           letter-spacing: 0.02em;
         }
         .download-btn {
-          font-family: 'JetBrains Mono', monospace;
+          font-family: 'Inter', -apple-system, sans-serif;
           font-size: 14px;
           font-weight: 600;
           padding: 13px 22px;
@@ -624,7 +624,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
         }
         .download-meta-link {
           margin-left: auto;
-          font-family: 'JetBrains Mono', monospace;
+          font-family: 'Inter', -apple-system, sans-serif;
           font-size: 13px;
           color: var(--text);
           text-decoration: none;
@@ -633,7 +633,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
         }
         .download-meta-link:hover { border-color: var(--accent); }
         .btn-primary {
-          font-family: 'JetBrains Mono', monospace;
+          font-family: 'Inter', -apple-system, sans-serif;
           font-size: 14px;
           font-weight: 600;
           padding: 13px 24px;
@@ -645,7 +645,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
         }
         .btn-primary:hover { opacity: 0.88; }
         .btn-ghost {
-          font-family: 'JetBrains Mono', monospace;
+          font-family: 'Inter', -apple-system, sans-serif;
           font-size: 14px;
           padding: 13px 24px;
           background: transparent;
@@ -711,7 +711,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
           gap: 24px;
         }
         .section-tag {
-          font-family: 'JetBrains Mono', monospace;
+          font-family: 'Inter', -apple-system, sans-serif;
           font-size: 12px;
           color: var(--accent);
           letter-spacing: 0.28em;
@@ -820,7 +820,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
         .billing-toggle {
           display: inline-flex;
           border: 1px solid var(--line);
-          font-family: 'JetBrains Mono', monospace;
+          font-family: 'Inter', -apple-system, sans-serif;
           font-size: 13px;
         }
         .billing-toggle button {
@@ -847,8 +847,8 @@ function OneToolsLandingInner({ videos, plans, release }) {
         }
         .plan.highlight { background: var(--bg-raised); }
         .plan-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
-        .plan-seats { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-dim); margin-bottom: 20px; }
-        .plan-price { font-family: 'JetBrains Mono', monospace; font-size: 30px; font-weight: 700; margin-bottom: 2px; }
+        .plan-seats { font-family: 'Inter', -apple-system, sans-serif; font-size: 12px; color: var(--text-dim); margin-bottom: 20px; }
+        .plan-price { font-family: 'Inter', -apple-system, sans-serif; font-size: 30px; font-weight: 700; margin-bottom: 2px; }
         .plan-price .period { font-size: 13px; color: var(--text-dim); font-weight: 400; }
         .plan-features { list-style: none; padding: 0; margin: 24px 0 28px; flex: 1; }
         .plan-features li {
@@ -861,7 +861,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
         }
         .plan-features li::before { content: '—'; color: var(--accent); }
         .plan-btn {
-          font-family: 'JetBrains Mono', monospace;
+          font-family: 'Inter', -apple-system, sans-serif;
           font-size: 13px;
           font-weight: 600;
           padding: 12px;

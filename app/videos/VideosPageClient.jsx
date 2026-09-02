@@ -116,10 +116,10 @@ export default function VideosPageClient({ videos }) {
           min-height: 100vh; line-height: 1.5;
         }
         .videos-root * { box-sizing: border-box; }
-        .mono { font-family: 'JetBrains Mono', monospace; }
+        .mono { font-family: 'Inter', -apple-system, sans-serif; }
         .container { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
         .videos-nav { border-bottom: 1px solid var(--line); padding: 20px 0; }
-        .videos-nav a { color: var(--accent); text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+        .videos-nav a { color: var(--accent); text-decoration: none; font-family: 'Inter', -apple-system, sans-serif; font-size: 13px; }
         .videos-header { padding: 48px 0 32px; }
         .videos-header h1 {
           font-family: 'Oswald', sans-serif; text-transform: uppercase;
