@@ -15,7 +15,7 @@ const DICT = {
       eyebrow: "Add-in cho Revit | BIM",
       titleAccent: "MỘT CÔNG CỤ",
       titleWhite: "MỌI GIẢI PHÁP",
-      desc: "OneTools - bộ giải pháp tất cả trong một. Với phương châm chất lượng hơn số lượng. Tự động hóa từ những chi tiết nhỏ nhất đến quy trình triển khai phức tạp. Giải phóng bạn khỏi công việc lặp lại nhàm chán để tập trung hoàn toàn vào thiết kế.",
+      desc: "OneTools - bộ giải pháp tất cả trong một. Chuẩn xác trong từng tính năng, giúp tự động hóa trọn vẹn từ những chi tiết nhỏ nhất đến những quy trình triển khai phức tạp. Giải phóng bạn khỏi công việc lặp lại nhàm chán để tập trung hoàn toàn vào thiết kế.",
       ctaPrimary: "Xem gói đăng ký",
       ctaGhost: "Xem video hướng dẫn",
     },
@@ -52,7 +52,7 @@ const DICT = {
       contactBtn: "Liên hệ tư vấn",
       subscribeBtn: "Đăng ký ngay",
     },
-    footer: { rights: "© 2026 ONE Architecture", version: "OneTools v1.0" },
+    footer: { rights: "© 2026 ONE", version: "OneTools v1.0" },
   },
 
   en: {
@@ -61,7 +61,7 @@ const DICT = {
       eyebrow: "Add-in for Revit | BIM",
       titleAccent: "ONE TOOLSET",
       titleWhite: "EVERY SOLUTION",
-      desc: "OneTools is an all-in-one solution that automates everything from the smallest details to complex deployment workflows — freeing you from tedious repetitive work so you can focus entirely on design.",
+      desc: "OneTools is an all-in-one solution. Precise in every feature, delivering full automation from the smallest details to the most complex deployment workflows — freeing you from tedious repetitive work so you can focus entirely on design.",
       ctaPrimary: "View plans",
       ctaGhost: "Watch tutorials",
     },
@@ -98,7 +98,7 @@ const DICT = {
       contactBtn: "Contact sales",
       subscribeBtn: "Subscribe",
     },
-    footer: { rights: "© 2026 ONE Architecture", version: "OneTools v1.0" },
+    footer: { rights: "© 2026 ONE", version: "OneTools v1.0" },
   },
 };
 
@@ -243,12 +243,20 @@ function VideoCard({ tool }) {
             allowFullScreen
           />
         ) : (
-          <button className="video-play-btn" onClick={() => setPlaying(true)} aria-label={t.tools.watchLabel(tool.name)}>
-            <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
-              <circle cx="26" cy="26" r="25" stroke="#C2A47C" strokeWidth="1.5" />
-              <path d="M21 16L36 26L21 36V16Z" fill="#C2A47C" />
-            </svg>
-          </button>
+          <>
+            <img
+              className="video-thumb"
+              src={`https://img.youtube.com/vi/${tool.youtubeId}/hqdefault.jpg`}
+              alt=""
+              loading="lazy"
+            />
+            <button className="video-play-btn" onClick={() => setPlaying(true)} aria-label={t.tools.watchLabel(tool.name)}>
+              <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+                <circle cx="26" cy="26" r="25" stroke="#C2A47C" strokeWidth="1.5" />
+                <path d="M21 16L36 26L21 36V16Z" fill="#C2A47C" />
+              </svg>
+            </button>
+          </>
         )}
       </div>
       <h3>{tool.name}</h3>
@@ -524,6 +532,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
           text-align: justify;
         }
         .hero-actions { display: flex; gap: 14px; margin-bottom: 56px; }
+        .hero-cta-link { text-decoration: none; display: inline-block; }
 
         /* ---------- Download card ---------- */
         .download-card {
@@ -648,6 +657,14 @@ function OneToolsLandingInner({ videos, plans, release }) {
         .btn-ghost:hover { border-color: var(--text-dim); }
 
         .dim-hero-svg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto 28px; }
+        .ribbon-label {
+          font-size: 11px;
+          color: var(--accent);
+          letter-spacing: 0.2em;
+          text-transform: uppercase;
+          margin-top: 12px;
+          margin-bottom: 10px;
+        }
         .hero-ribbon-frame {
           border: 1px solid var(--line);
           background: var(--bg-raised);
@@ -732,7 +749,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
           justify-content: center;
           margin-top: 28px;
         }
-        .tools-more .btn-ghost {
+        .tools-more .tools-more-link {
           text-decoration: none;
           display: inline-block;
         }
@@ -759,6 +776,22 @@ function OneToolsLandingInner({ videos, plans, release }) {
           position: relative;
           overflow: hidden;
         }
+        .video-thumb {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          opacity: 0;
+          filter: blur(1.5px) brightness(0.75);
+          transform: scale(1.03);
+          transition: opacity 0.35s ease, transform 0.35s ease, filter 0.35s ease;
+        }
+        .video-card:hover .video-thumb {
+          opacity: 0.6;
+          filter: blur(0.5px) brightness(0.85);
+          transform: scale(1);
+        }
         .video-play-btn {
           position: absolute;
           inset: 0;
@@ -770,6 +803,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
           display: flex;
           align-items: center;
           justify-content: center;
+          z-index: 2;
         }
         .video-frame iframe { border: none; }
         .video-card h3 {
@@ -912,7 +946,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
           <div className="nav-links nav-links-desktop">
             <a href="#tools">{t.nav.tools}</a>
             <a href="#pricing">{t.nav.pricing}</a>
-            <a href="#">{t.nav.docs}</a>
+            <a href="#contact">{t.nav.docs}</a>
           </div>
           <div className="nav-right">
             <LangToggle />
@@ -943,7 +977,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
           <div className="nav-mobile-panel">
             <a href="#tools" onClick={() => setMobileMenuOpen(false)}>{t.nav.tools}</a>
             <a href="#pricing" onClick={() => setMobileMenuOpen(false)}>{t.nav.pricing}</a>
-            <a href="#" onClick={() => setMobileMenuOpen(false)}>{t.nav.docs}</a>
+            <a href="#contact" onClick={() => setMobileMenuOpen(false)}>{t.nav.docs}</a>
             {user ? (
               <button
                 className="nav-cta"
@@ -971,8 +1005,8 @@ function OneToolsLandingInner({ videos, plans, release }) {
           </h1>
           <p>{t.hero.desc}</p>
           <div className="hero-actions">
-            <button className="btn-primary">{t.hero.ctaPrimary}</button>
-            <button className="btn-ghost">{t.hero.ctaGhost}</button>
+            <a href="#pricing" className="btn-primary hero-cta-link">{t.hero.ctaPrimary}</a>
+            <a href="#tools" className="btn-ghost hero-cta-link">{t.hero.ctaGhost}</a>
           </div>
 
           <div className="download-card">
@@ -1028,6 +1062,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
 
           <DimensionHero />
 
+          <div className="ribbon-label mono">Light/Dark Mode</div>
           <div className="hero-ribbon-frame">
             <img src="/ribbon-lightdark.jpg" alt="OneTools ribbon trong Autodesk Revit" />
           </div>
@@ -1062,7 +1097,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
           </div>
           {toolItems.length > 10 && (
             <div className="tools-more">
-              <Link href="/videos" className="btn-ghost">
+              <Link href="/videos" className="btn-primary tools-more-link">
                 {lang === "vi" ? "Xem thêm" : "View more"}
               </Link>
             </div>
@@ -1115,8 +1150,8 @@ function OneToolsLandingInner({ videos, plans, release }) {
         </div>
       </section>
 
-      <div className="social-bar container">
-        <a href="https://www.youtube.com/channel/UCU_XrxQWA4m-3sylSzsBULg" target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="social-icon">
+      <div className="social-bar container" id="contact">
+        <a href="https://www.youtube.com/playlist?list=PLXW_xxNjWdNQ" target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="social-icon">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
             <path d="M22 12s0-3.2-.4-4.7c-.2-.9-.9-1.6-1.8-1.8C18.1 5 12 5 12 5s-6.1 0-7.8.5c-.9.2-1.6.9-1.8 1.8C2 8.8 2 12 2 12s0 3.2.4 4.7c.2.9.9 1.6 1.8 1.8C5.9 19 12 19 12 19s6.1 0 7.8-.5c.9-.2 1.6-.9 1.8-1.8.4-1.5.4-4.7.4-4.7z" stroke="currentColor" strokeWidth="1.6"/>
             <path d="M10 9.5l5 2.5-5 2.5v-5z" fill="currentColor"/>

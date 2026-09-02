@@ -46,12 +46,20 @@ function VideoCard({ tool, lang }) {
             allowFullScreen
           />
         ) : (
-          <button className="video-play-btn" onClick={() => setPlaying(true)} aria-label={t.watchLabel(tool.name)}>
-            <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
-              <circle cx="26" cy="26" r="25" stroke="#C2A47C" strokeWidth="1.5" />
-              <path d="M21 16L36 26L21 36V16Z" fill="#C2A47C" />
-            </svg>
-          </button>
+          <>
+            <img
+              className="video-thumb"
+              src={`https://img.youtube.com/vi/${tool.youtubeId}/hqdefault.jpg`}
+              alt=""
+              loading="lazy"
+            />
+            <button className="video-play-btn" onClick={() => setPlaying(true)} aria-label={t.watchLabel(tool.name)}>
+              <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+                <circle cx="26" cy="26" r="25" stroke="#C2A47C" strokeWidth="1.5" />
+                <path d="M21 16L36 26L21 36V16Z" fill="#C2A47C" />
+              </svg>
+            </button>
+          </>
         )}
       </div>
       <h3>{tool.name}</h3>
@@ -130,10 +138,20 @@ export default function VideosPageClient({ videos }) {
           aspect-ratio: 16/9; background: var(--bg-raised); border: 1px solid var(--line);
           margin-bottom: 16px; position: relative; overflow: hidden;
         }
+        .video-thumb {
+          position: absolute; inset: 0; width: 100%; height: 100%;
+          object-fit: cover; opacity: 0;
+          filter: blur(1.5px) brightness(0.75); transform: scale(1.03);
+          transition: opacity 0.35s ease, transform 0.35s ease, filter 0.35s ease;
+        }
+        .video-card:hover .video-thumb {
+          opacity: 0.6; filter: blur(0.5px) brightness(0.85); transform: scale(1);
+        }
         .video-play-btn {
           position: absolute; inset: 0; width: 100%; height: 100%;
           background: transparent; border: none; cursor: pointer;
           display: flex; align-items: center; justify-content: center;
+          z-index: 2;
         }
         .video-frame iframe { border: none; }
         .video-card h3 { font-size: 16px; margin: 0 0 8px; font-weight: 600; }
