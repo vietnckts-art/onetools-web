@@ -52,7 +52,13 @@ const DICT = {
       contactBtn: "Liên hệ tư vấn",
       subscribeBtn: "Đăng ký ngay",
     },
-    footer: { rights: "© 2026 ONE", version: "OneTools v1.0" },
+    footer: {
+      rights: "© 2026 ONE",
+      version: "OneTools v1.0",
+      privacy: "Chính sách bảo mật",
+      refund: "Chính sách hoàn tiền",
+      terms: "Điều khoản sử dụng",
+    },
   },
 
   en: {
@@ -98,7 +104,13 @@ const DICT = {
       contactBtn: "Contact sales",
       subscribeBtn: "Subscribe",
     },
-    footer: { rights: "© 2026 ONE", version: "OneTools v1.0" },
+    footer: {
+      rights: "© 2026 ONE",
+      version: "OneTools v1.0",
+      privacy: "Privacy Policy",
+      refund: "Refund Policy",
+      terms: "Terms & Conditions",
+    },
   },
 };
 
@@ -878,12 +890,18 @@ function OneToolsLandingInner({ videos, plans, release }) {
         .footer {
           padding: 40px 0;
           display: flex;
+          flex-wrap: wrap;
+          gap: 14px;
           justify-content: space-between;
           align-items: center;
           font-size: 13px;
           color: var(--text-dim);
         }
         .footer .mono { color: var(--text-dim); }
+        .footer-links { display: flex; flex-wrap: wrap; gap: 18px; }
+        .footer-links a { color: var(--text-dim); text-decoration: none; transition: color 0.15s; }
+        .footer-links a:hover { color: var(--accent); }
+        .footer-meta { display: flex; gap: 18px; }
         .social-bar {
           display: flex;
           gap: 14px;
@@ -1162,7 +1180,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
             <path d="M15 8.5h2V5.5h-2c-2 0-3.5 1.6-3.5 3.5v2H9.5v3H11.5v7h3v-7h2l.5-3H14.5v-2c0-.3.2-.5.5-.5z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/>
           </svg>
         </a>
-        <a href="mailto:onetools.bim@gmail.com" aria-label="Email" className="social-icon">
+        <a href="mailto:support@onetools-bim.com" aria-label="Email" className="social-icon">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
             <rect x="3" y="5.5" width="18" height="13" rx="1.5" stroke="currentColor" strokeWidth="1.6"/>
             <path d="M4 7l8 6 8-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1176,8 +1194,15 @@ function OneToolsLandingInner({ videos, plans, release }) {
       </div>
 
       <footer className="footer container">
-        <span className="mono">{t.footer.rights}</span>
-        <span className="mono">{t.footer.version}</span>
+        <div className="footer-links">
+          <Link href="/privacy-policy">{t.footer.privacy}</Link>
+          <Link href="/refund-policy">{t.footer.refund}</Link>
+          <Link href="/terms">{t.footer.terms}</Link>
+        </div>
+        <div className="footer-meta">
+          <span className="mono">{t.footer.rights}</span>
+          <span className="mono">{t.footer.version}</span>
+        </div>
       </footer>
     </div>
   );
