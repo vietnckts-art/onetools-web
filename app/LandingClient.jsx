@@ -946,6 +946,11 @@ function OneToolsLandingInner({ videos, plans, release }) {
           .download-btn { width: 100%; justify-content: center; }
           .download-meta { flex-direction: column; align-items: flex-start; gap: 12px; }
           .download-meta-link { margin-left: 0; }
+
+          .social-bar { justify-content: center; }
+          .footer { flex-direction: column; align-items: center; text-align: center; gap: 12px; }
+          .footer-links { justify-content: center; }
+          .footer-meta { justify-content: center; }
         }
 
         @media (max-width: 380px) {
