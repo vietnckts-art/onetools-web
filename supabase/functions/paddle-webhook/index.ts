@@ -169,6 +169,7 @@ serve(async (req) => {
     expires_at: expiresAt,
     owner_user_id: userId,
     paddle_transaction_id: txnId,
+    owner_name: "PAY", // License tự động cấp qua thanh toán — đánh dấu "PAY" thay vì để trống, dễ lọc/quản lý.
   });
 
   if (insertErr) {
