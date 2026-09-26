@@ -296,8 +296,6 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [previewByPriceId, setPreviewByPriceId] = useState({});
-  const [loadingPriceId, setLoadingPriceId] = useState(null);
-  const [checkoutError, setCheckoutError] = useState("");
   const { lang, t } = useLang();
 
   useEffect(() => {
@@ -351,32 +349,6 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
     };
   }, [plans, country]);
 
-  const handleSubscribe = async (priceId) => {
-    setCheckoutError("");
-    setLoadingPriceId(priceId);
-    try {
-      const paddle = await getPaddle();
-      paddle.Checkout.open({
-        items: [{ priceId, quantity: 1 }],
-        ...(user?.email ? { customer: { email: user.email } } : {}),
-        settings: {
-          displayMode: "overlay",
-          variant: "one-page",
-          successUrl: `${window.location.origin}/welcome`,
-        },
-      });
-    } catch (err) {
-      console.error("[Paddle] Không mở được Checkout:", err.message);
-      setCheckoutError(
-        lang === "vi"
-          ? "Không mở được cổng thanh toán. Vui lòng thử lại hoặc liên hệ hỗ trợ."
-          : "Couldn't open checkout. Please try again or contact support."
-      );
-    } finally {
-      setLoadingPriceId(null);
-    }
-  };
-
   // Dữ liệu từ Supabase (props) — chọn đúng field theo ngôn ngữ hiện tại.
   // Nếu Supabase chưa cấu hình / bảng trống, videos và plans sẽ là mảng rỗng
   // và trang vẫn hiển thị bình thường (chỉ không có nội dung động).
@@ -399,6 +371,7 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
     // sẵn (đã gọi PricePreview thành công), nếu không vẫn dùng giá tĩnh price/price_usd như cũ.
     const localizedPrice = paddlePriceId ? previewByPriceId[paddlePriceId] : null;
     return {
+      id: p.id,
       name: lang === "vi" ? p.name_vi : p.name_en,
       price: isContact ? t.pricing.contactLabel : price,
       currency,
@@ -1240,7 +1213,7 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
                   <div className="plan-price mono">
                     {plan.isContact
                       ? plan.price
-                      : plan.localizedPrice || `${plan.currency}${plan.price}`}
+                      : (lang === "en" && plan.localizedPrice) || `${plan.currency}${plan.price}`}
                     {plan.period && <span className="period"> {plan.period}</span>}
                   </div>
                   <ul className="plan-features">
@@ -1253,18 +1226,14 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
                       {t.pricing.contactBtn}
                     </a>
                   ) : plan.paddlePriceId ? (
-                    <button
-                      className="plan-btn"
-                      disabled={loadingPriceId === plan.paddlePriceId}
-                      onClick={() => handleSubscribe(plan.paddlePriceId)}
-                    >
-                      {loadingPriceId === plan.paddlePriceId
-                        ? (lang === "vi" ? "Đang mở..." : "Opening...")
-                        : t.pricing.subscribeBtn}
-                    </button>
+                    // Có giá thật (paddle_price_id) — sang trang /checkout để khách tự chọn thanh
+                    // toán nội địa (PayOS) hay quốc tế (Paddle), thay vì mở thẳng Paddle Checkout.
+                    <Link href={`/checkout?id=${plan.id}`} className="plan-btn">
+                      {t.pricing.subscribeBtn}
+                    </Link>
                   ) : (
                     // Chưa gán paddle_price_id (VD: gói Free Trial) — Trial đã cấp miễn phí ngay
-                    // lúc đăng ký tài khoản, không cần qua Paddle, nên trỏ thẳng sang trang đăng ký.
+                    // lúc đăng ký tài khoản, không cần chọn phương thức thanh toán, trỏ thẳng /signup.
                     <Link href="/signup" className="plan-btn">
                       {t.pricing.subscribeBtn}
                     </Link>
@@ -1276,7 +1245,6 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
                 {lang === "vi" ? "Chưa có gói giá nào được đăng." : "No pricing plans published yet."}
               </p>
             )}
-            {checkoutError && <p className="checkout-error">{checkoutError}</p>}
           </div>
         </div>
       </section>
