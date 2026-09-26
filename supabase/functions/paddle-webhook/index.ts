@@ -33,8 +33,8 @@ const PADDLE_WEBHOOK_SECRET = Deno.env.get("PADDLE_WEBHOOK_SECRET");
 // claude/PaddleRegistration_BankPayout_notes.md, mục "Sandbox catalog đã tạo".
 const PRICE_MAP: Record<string, { license_type: string; max_seats: number }> = {
   // ----- Sandbox (Test mode) -----
-  "pri_01m3exa7pr17a917vy47bg1gv2": { license_type: "individual", max_seats: 1 }, // Individual (Pro) $39/năm
-  "pri_01m3espztc22znnhaq4wrh59nb": { license_type: "team", max_seats: 3 }, // Team / Studio $98/năm
+  "pri_01m3exa7pr17a917vy47bg1gv2": { license_type: "pro", max_seats: 1 }, // Individual (Pro) $39/năm
+  "pri_01m3espztc22znnhaq4wrh59nb": { license_type: "business", max_seats: 3 }, // Team / Studio $98/năm
   // ----- Live (điền sau khi tạo lại catalog ở live) -----
   // "pri_xxx_live_individual": { license_type: "individual", max_seats: 1 },
   // "pri_xxx_live_team": { license_type: "team", max_seats: 3 },
