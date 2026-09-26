@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, createContext, useContext } from "react";
 import Link from "next/link";
 import { supabase } from "../lib/supabaseClient";
+import { getPaddle } from "../lib/paddleClient";
 
 
 // =====================================================================
@@ -291,10 +292,12 @@ function LangToggle() {
   );
 }
 
-function OneToolsLandingInner({ videos, plans, release }) {
-  const [billingAnnual, setBillingAnnual] = useState(true);
+function OneToolsLandingInner({ videos, plans, release, country }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [user, setUser] = useState(null);
+  const [previewByPriceId, setPreviewByPriceId] = useState({});
+  const [loadingPriceId, setLoadingPriceId] = useState(null);
+  const [checkoutError, setCheckoutError] = useState("");
   const { lang, t } = useLang();
 
   useEffect(() => {
@@ -309,6 +312,69 @@ function OneToolsLandingInner({ videos, plans, release }) {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+  };
+
+  // Lấy giá đã quy đổi theo khu vực (Paddle PricePreview) cho các gói có sẵn `paddle_price_id`
+  // (cột lấy trực tiếp từ bảng pricing_plans) — gộp chung 1 lần gọi cho tất cả Price ID thay vì
+  // gọi riêng từng gói. Nếu Paddle chưa cấu hình xong (thiếu env var) hoặc lỗi mạng, âm thầm bỏ
+  // qua và vẫn hiện giá tĩnh (USD/VNĐ) đã có sẵn từ Supabase — không chặn trang.
+  useEffect(() => {
+    const priceIds = Array.from(
+      new Set((plans || []).map((p) => p.paddle_price_id).filter(Boolean))
+    );
+    if (priceIds.length === 0) return;
+
+    let cancelled = false;
+    getPaddle()
+      .then((paddle) =>
+        paddle.PricePreview({
+          items: priceIds.map((priceId) => ({ priceId, quantity: 1 })),
+          ...(country ? { address: { countryCode: country } } : {}),
+        })
+      )
+      .then((result) => {
+        if (cancelled) return;
+        const map = {};
+        (result?.data?.details?.lineItems || []).forEach((item) => {
+          if (item?.price?.id && item?.formattedTotals?.total) {
+            map[item.price.id] = item.formattedTotals.total;
+          }
+        });
+        setPreviewByPriceId(map);
+      })
+      .catch((err) => {
+        console.error("[Paddle] Không lấy được giá theo khu vực (PricePreview):", err.message);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [plans, country]);
+
+  const handleSubscribe = async (priceId) => {
+    setCheckoutError("");
+    setLoadingPriceId(priceId);
+    try {
+      const paddle = await getPaddle();
+      paddle.Checkout.open({
+        items: [{ priceId, quantity: 1 }],
+        ...(user?.email ? { customer: { email: user.email } } : {}),
+        settings: {
+          displayMode: "overlay",
+          variant: "one-page",
+          successUrl: `${window.location.origin}/welcome`,
+        },
+      });
+    } catch (err) {
+      console.error("[Paddle] Không mở được Checkout:", err.message);
+      setCheckoutError(
+        lang === "vi"
+          ? "Không mở được cổng thanh toán. Vui lòng thử lại hoặc liên hệ hỗ trợ."
+          : "Couldn't open checkout. Please try again or contact support."
+      );
+    } finally {
+      setLoadingPriceId(null);
+    }
   };
 
   // Dữ liệu từ Supabase (props) — chọn đúng field theo ngôn ngữ hiện tại.
@@ -328,6 +394,10 @@ function OneToolsLandingInner({ videos, plans, release }) {
     const isContact = p.is_contact || missingUsdPrice;
     const price = lang === "vi" ? p.price : p.price_usd;
     const currency = lang === "vi" ? "₫" : "$";
+    const paddlePriceId = p.paddle_price_id || null;
+    // Giá đã quy đổi theo khu vực do Paddle trả về (VD: "£31.00" cho khách UK) — CHỈ hiện khi có
+    // sẵn (đã gọi PricePreview thành công), nếu không vẫn dùng giá tĩnh price/price_usd như cũ.
+    const localizedPrice = paddlePriceId ? previewByPriceId[paddlePriceId] : null;
     return {
       name: lang === "vi" ? p.name_vi : p.name_en,
       price: isContact ? t.pricing.contactLabel : price,
@@ -337,6 +407,8 @@ function OneToolsLandingInner({ videos, plans, release }) {
       seats: lang === "vi" ? p.seats_vi : p.seats_en,
       features: lang === "vi" ? p.features_vi : p.features_en,
       highlight: p.highlight,
+      paddlePriceId,
+      localizedPrice,
     };
   });
 
@@ -893,6 +965,11 @@ function OneToolsLandingInner({ videos, plans, release }) {
         }
         .plan.highlight .plan-btn { background: var(--accent); color: #292929; border-color: var(--accent); }
         .plan-btn:hover { border-color: var(--accent); }
+        .plan-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        a.plan-btn { display: block; box-sizing: border-box; text-align: center; text-decoration: none; }
+        .checkout-error {
+          grid-column: 1 / -1; text-align: center; font-size: 13px; color: var(--warn); margin-top: 8px;
+        }
 
         /* ---------- Footer ---------- */
         .footer {
@@ -1153,14 +1230,6 @@ function OneToolsLandingInner({ videos, plans, release }) {
               <div className="section-tag">{t.pricing.tag}</div>
               <h2>{t.pricing.title}</h2>
             </div>
-            <div className="billing-toggle">
-              <button className={billingAnnual ? "active" : ""} onClick={() => setBillingAnnual(true)}>
-                {t.pricing.billingYear}
-              </button>
-              <button className={!billingAnnual ? "active" : ""} onClick={() => setBillingAnnual(false)}>
-                {t.pricing.billingMonth}
-              </button>
-            </div>
           </div>
           <div className="pricing-grid">
             {planItems.length > 0 ? (
@@ -1169,7 +1238,9 @@ function OneToolsLandingInner({ videos, plans, release }) {
                   <div className="plan-name">{plan.name}</div>
                   <div className="plan-seats mono">{plan.seats}</div>
                   <div className="plan-price mono">
-                    {plan.isContact ? plan.price : `${plan.currency}${plan.price}`}
+                    {plan.isContact
+                      ? plan.price
+                      : plan.localizedPrice || `${plan.currency}${plan.price}`}
                     {plan.period && <span className="period"> {plan.period}</span>}
                   </div>
                   <ul className="plan-features">
@@ -1177,9 +1248,27 @@ function OneToolsLandingInner({ videos, plans, release }) {
                       <li key={f}>{f}</li>
                     ))}
                   </ul>
-                  <button className="plan-btn">
-                    {plan.isContact ? t.pricing.contactBtn : t.pricing.subscribeBtn}
-                  </button>
+                  {plan.isContact ? (
+                    <a href="#contact" className="plan-btn">
+                      {t.pricing.contactBtn}
+                    </a>
+                  ) : plan.paddlePriceId ? (
+                    <button
+                      className="plan-btn"
+                      disabled={loadingPriceId === plan.paddlePriceId}
+                      onClick={() => handleSubscribe(plan.paddlePriceId)}
+                    >
+                      {loadingPriceId === plan.paddlePriceId
+                        ? (lang === "vi" ? "Đang mở..." : "Opening...")
+                        : t.pricing.subscribeBtn}
+                    </button>
+                  ) : (
+                    // Chưa gán paddle_price_id (VD: gói Free Trial) — Trial đã cấp miễn phí ngay
+                    // lúc đăng ký tài khoản, không cần qua Paddle, nên trỏ thẳng sang trang đăng ký.
+                    <Link href="/signup" className="plan-btn">
+                      {t.pricing.subscribeBtn}
+                    </Link>
+                  )}
                 </div>
               ))
             ) : (
@@ -1187,6 +1276,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
                 {lang === "vi" ? "Chưa có gói giá nào được đăng." : "No pricing plans published yet."}
               </p>
             )}
+            {checkoutError && <p className="checkout-error">{checkoutError}</p>}
           </div>
         </div>
       </section>
@@ -1231,7 +1321,7 @@ function OneToolsLandingInner({ videos, plans, release }) {
   );
 }
 
-export default function OneToolsLanding({ videos, plans, release }) {
+export default function OneToolsLanding({ videos, plans, release, country }) {
   const [lang, setLangState] = useState("vi");
   const [mounted, setMounted] = useState(false);
 
@@ -1251,7 +1341,7 @@ export default function OneToolsLanding({ videos, plans, release }) {
 
   return (
     <LangContext.Provider value={{ lang, t: DICT[lang], setLang }}>
-      <OneToolsLandingInner videos={videos} plans={plans} release={release} />
+      <OneToolsLandingInner videos={videos} plans={plans} release={release} country={country} />
     </LangContext.Provider>
   );
 }

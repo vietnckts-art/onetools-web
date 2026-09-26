@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
 import LandingClient from "./LandingClient";
 
@@ -53,5 +54,12 @@ export const revalidate = 60; // Tự tải lại dữ liệu mới sau mỗi 60
 
 export default async function Page() {
   const { videos, plans, release } = await getPageData();
-  return <LandingClient videos={videos} plans={plans} release={release} />;
+
+  // Vercel tự thêm header này = mã quốc gia 2 ký tự đoán từ IP khách truy cập (VD: "GB", "VN").
+  // Truyền xuống để Paddle.PricePreview() hiện giá đúng theo khu vực — KHÔNG suy đoán/mặc định
+  // quốc gia nào nếu header không có (local dev, hosting khác Vercel...), cứ để trống thì Paddle
+  // tự nhận diện theo IP phía client.
+  const country = headers().get("x-vercel-ip-country") || null;
+
+  return <LandingClient videos={videos} plans={plans} release={release} country={country} />;
 }
