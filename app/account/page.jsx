@@ -1,0 +1,336 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "../../lib/supabaseClient";
+import { callEdgeFunction } from "../../lib/callEdgeFunction";
+
+const STATUS_LABEL = {
+  active: "Đang hoạt động",
+  trial: "Dùng thử",
+  expired: "Đã hết hạn",
+};
+
+const TYPE_LABEL = {
+  trial: "Trial",
+  pro: "Pro",
+  business: "Business",
+  lifetime: "Lifetime",
+  dev_preview: "Dev Preview",
+};
+
+function formatDate(value) {
+  if (!value) return "—";
+  try {
+    return new Date(value).toLocaleString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return value;
+  }
+}
+
+function pickCurrentLicense(licenses) {
+  const now = new Date();
+  const active = licenses.find((l) => l.status === "active" && new Date(l.expires_at) > now);
+  if (active) return active;
+  const trial = licenses.find((l) => l.status === "trial" && new Date(l.expires_at) > now);
+  if (trial) return trial;
+  return null;
+}
+
+export default function AccountPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [licenses, setLicenses] = useState([]);
+  const [seats, setSeats] = useState([]);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const [licenseKeyInput, setLicenseKeyInput] = useState("");
+  const [claimStatus, setClaimStatus] = useState("idle"); // idle | sending | error | success
+  const [claimMsg, setClaimMsg] = useState("");
+
+  const loadData = useCallback(async () => {
+    setErrorMsg("");
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData?.session;
+
+    if (!session) {
+      router.push("/login");
+      return;
+    }
+
+    setUser(session.user);
+
+    const { data: licenseRows, error: licenseError } = await supabase
+      .from("licenses")
+      .select("*")
+      .eq("owner_user_id", session.user.id)
+      .order("created_at", { ascending: false });
+
+    if (licenseError) {
+      setErrorMsg("Không tải được thông tin License: " + licenseError.message);
+      setLoading(false);
+      return;
+    }
+
+    setLicenses(licenseRows || []);
+
+    const current = pickCurrentLicense(licenseRows || []);
+    if (current) {
+      const { data: seatRows, error: seatError } = await supabase
+        .from("license_seats")
+        .select("*")
+        .eq("license_id", current.id)
+        .order("last_seen_at", { ascending: false });
+
+      if (!seatError) {
+        setSeats(seatRows || []);
+      }
+    } else {
+      setSeats([]);
+    }
+
+    setLoading(false);
+  }, [router]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push("/login");
+  };
+
+  const handleClaim = async (e) => {
+    e.preventDefault();
+    setClaimMsg("");
+
+    if (!licenseKeyInput.trim()) return;
+
+    setClaimStatus("sending");
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData?.session?.access_token;
+
+    const { ok, data } = await callEdgeFunction(
+      "claim-license-key",
+      { license_key: licenseKeyInput.trim() },
+      accessToken
+    );
+
+    if (!ok || data.status !== "ok") {
+      setClaimStatus("error");
+      setClaimMsg(data.message || "Không nhận được License Key, vui lòng kiểm tra lại.");
+      return;
+    }
+
+    setClaimStatus("success");
+    setClaimMsg("Đã gắn License Key vào tài khoản.");
+    setLicenseKeyInput("");
+    setLoading(true);
+    await loadData();
+  };
+
+  const current = pickCurrentLicense(licenses);
+  const otherLicenses = licenses.filter((l) => !current || l.id !== current.id);
+
+  return (
+    <div className="acc-root">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500&display=swap');
+        .acc-root {
+          --bg: #161512; --bg-raised: #1F1D19; --line: #37342C;
+          --text: #F3EFE6; --text-dim: #A79E8C; --accent: #C9A15F;
+          --ok: #7FBF7F; --warn: #E0C070; --error: #E08080;
+          min-height: 100vh; background: var(--bg); color: var(--text);
+          font-family: 'Inter', sans-serif;
+          padding: 40px 24px 80px;
+        }
+        .acc-shell { max-width: 640px; margin: 0 auto; }
+        .acc-header {
+          display: flex; justify-content: space-between; align-items: center;
+          margin-bottom: 28px; flex-wrap: wrap; gap: 12px;
+        }
+        .acc-title {
+          font-family: 'Oswald', sans-serif; text-transform: uppercase;
+          font-size: 24px; font-weight: 700; margin: 0;
+        }
+        .acc-email { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
+        .acc-logout {
+          background: none; border: 1px solid var(--line); color: var(--text-dim);
+          padding: 9px 16px; font-size: 13px; cursor: pointer;
+          font-family: 'JetBrains Mono', monospace;
+        }
+        .acc-logout:hover { border-color: var(--accent); color: var(--accent); }
+        .acc-card {
+          border: 1px solid var(--line); background: var(--bg-raised);
+          padding: 24px 26px; margin-bottom: 20px;
+        }
+        .acc-card-title {
+          font-family: 'JetBrains Mono', monospace; font-size: 11px;
+          color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase;
+          margin: 0 0 16px;
+        }
+        .acc-badge {
+          display: inline-block; padding: 3px 10px; font-size: 11.5px;
+          font-family: 'JetBrains Mono', monospace; text-transform: uppercase;
+          border: 1px solid var(--line); border-radius: 2px;
+        }
+        .acc-badge.active { color: var(--ok); border-color: var(--ok); }
+        .acc-badge.trial { color: var(--warn); border-color: var(--warn); }
+        .acc-badge.expired { color: var(--error); border-color: var(--error); }
+        .acc-row {
+          display: flex; justify-content: space-between; gap: 12px;
+          padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13.5px;
+        }
+        .acc-row:last-child { border-bottom: none; }
+        .acc-row-label { color: var(--text-dim); }
+        .acc-row-value { text-align: right; word-break: break-all; }
+        .acc-empty { font-size: 13.5px; color: var(--text-dim); line-height: 1.6; }
+        .acc-seat {
+          padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 13px;
+        }
+        .acc-seat:last-child { border-bottom: none; }
+        .acc-seat-hwid {
+          font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text);
+          word-break: break-all;
+        }
+        .acc-seat-meta { color: var(--text-dim); font-size: 12px; margin-top: 2px; }
+        .acc-form { display: flex; gap: 10px; flex-wrap: wrap; }
+        .acc-input {
+          flex: 1; min-width: 200px; padding: 11px 14px; background: var(--bg);
+          border: 1px solid var(--line); color: var(--text); font-size: 14px;
+          font-family: 'JetBrains Mono', monospace;
+        }
+        .acc-input:focus { outline: none; border-color: var(--accent); }
+        .acc-btn {
+          padding: 11px 20px; background: var(--accent); color: var(--bg);
+          border: none; font-family: 'JetBrains Mono', monospace; font-weight: 600;
+          font-size: 13.5px; cursor: pointer; white-space: nowrap;
+        }
+        .acc-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .acc-msg { font-size: 13px; margin-top: 12px; line-height: 1.5; }
+        .acc-msg.success { color: var(--ok); }
+        .acc-msg.error { color: var(--error); }
+        .acc-history-item {
+          display: flex; justify-content: space-between; align-items: center;
+          padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px;
+        }
+        .acc-history-item:last-child { border-bottom: none; }
+        .acc-loading, .acc-error { text-align: center; padding: 60px 20px; color: var(--text-dim); }
+      `}</style>
+
+      <div className="acc-shell">
+        {loading ? (
+          <div className="acc-loading">Đang tải...</div>
+        ) : errorMsg ? (
+          <div className="acc-error">{errorMsg}</div>
+        ) : (
+          <>
+            <div className="acc-header">
+              <div>
+                <h1 className="acc-title">Tài khoản OneTools</h1>
+                <p className="acc-email">{user?.email}</p>
+              </div>
+              <button className="acc-logout" onClick={handleLogout}>Đăng xuất</button>
+            </div>
+
+            <div className="acc-card">
+              <p className="acc-card-title">License hiện tại</p>
+              {current ? (
+                <>
+                  <div className="acc-row">
+                    <span className="acc-row-label">Trạng thái</span>
+                    <span className="acc-row-value">
+                      <span className={`acc-badge ${current.status}`}>
+                        {STATUS_LABEL[current.status] || current.status}
+                      </span>
+                    </span>
+                  </div>
+                  <div className="acc-row">
+                    <span className="acc-row-label">Loại license</span>
+                    <span className="acc-row-value">
+                      {TYPE_LABEL[current.license_type] || current.license_type || "—"}
+                    </span>
+                  </div>
+                  <div className="acc-row">
+                    <span className="acc-row-label">Hết hạn</span>
+                    <span className="acc-row-value">{formatDate(current.expires_at)}</span>
+                  </div>
+                  <div className="acc-row">
+                    <span className="acc-row-label">License Key</span>
+                    <span className="acc-row-value">{current.license_key}</span>
+                  </div>
+                  <div className="acc-row">
+                    <span className="acc-row-label">Số máy tối đa</span>
+                    <span className="acc-row-value">{current.max_seats}</span>
+                  </div>
+                </>
+              ) : (
+                <p className="acc-empty">
+                  Tài khoản chưa có License nào còn hiệu lực. Nếu bạn đã mua license, dùng ô bên dưới để
+                  nhập License Key.
+                </p>
+              )}
+            </div>
+
+            <div className="acc-card">
+              <p className="acc-card-title">Máy đã kích hoạt {current ? `(${seats.length}/${current.max_seats})` : ""}</p>
+              {!current ? (
+                <p className="acc-empty">Chưa có License nào đang hoạt động.</p>
+              ) : seats.length === 0 ? (
+                <p className="acc-empty">Chưa có máy nào kích hoạt License này.</p>
+              ) : (
+                seats.map((seat, index) => (
+                  <div className="acc-seat" key={seat.id}>
+                    <div className="acc-seat-hwid">Máy {index + 1} — {seat.device_hwid}</div>
+                    <div className="acc-seat-meta">
+                      Kích hoạt: {formatDate(seat.bound_at)} · Hoạt động gần nhất: {formatDate(seat.last_seen_at)}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="acc-card">
+              <p className="acc-card-title">Nhập License Key</p>
+              <form className="acc-form" onSubmit={handleClaim}>
+                <input
+                  className="acc-input"
+                  placeholder="Dán License Key vào đây"
+                  value={licenseKeyInput}
+                  onChange={(e) => setLicenseKeyInput(e.target.value)}
+                />
+                <button className="acc-btn" type="submit" disabled={claimStatus === "sending"}>
+                  {claimStatus === "sending" ? "Đang xử lý..." : "Kích hoạt"}
+                </button>
+              </form>
+              {claimStatus === "error" && <p className="acc-msg error">{claimMsg}</p>}
+              {claimStatus === "success" && <p className="acc-msg success">{claimMsg}</p>}
+            </div>
+
+            {otherLicenses.length > 0 && (
+              <div className="acc-card">
+                <p className="acc-card-title">Lịch sử License khác</p>
+                {otherLicenses.map((l) => (
+                  <div className="acc-history-item" key={l.id}>
+                    <span>{TYPE_LABEL[l.license_type] || l.license_type} · {l.license_key}</span>
+                    <span className={`acc-badge ${l.status}`}>{STATUS_LABEL[l.status] || l.status}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -10,7 +10,7 @@ import { supabase } from "../lib/supabaseClient";
 // =====================================================================
 const DICT = {
   vi: {
-    nav: { tools: "Video hướng dẫn", pricing: "Bảng giá", docs: "Liên hệ", login: "Đăng nhập" },
+    nav: { tools: "Video hướng dẫn", pricing: "Bảng giá", docs: "Liên hệ", login: "Đăng nhập", signup: "Đăng ký" },
     hero: {
       eyebrow: "Add-in cho Revit | BIM",
       titleAccent: "MỘT CÔNG CỤ",
@@ -62,7 +62,7 @@ const DICT = {
   },
 
   en: {
-    nav: { tools: "Tutorials", pricing: "Pricing", docs: "Contact", login: "Log in" },
+    nav: { tools: "Tutorials", pricing: "Pricing", docs: "Contact", login: "Log in", signup: "Sign up" },
     hero: {
       eyebrow: "Add-in for Revit | BIM",
       titleAccent: "ONE TOOLSET",
@@ -462,6 +462,14 @@ function OneToolsLandingInner({ videos, plans, release }) {
           display: inline-block;
         }
         .nav-cta:hover { background: var(--accent); color: #292929; }
+        .nav-signup-link {
+          color: var(--text-dim);
+          text-decoration: none;
+          font-size: 13px;
+          font-family: 'Inter', -apple-system, sans-serif;
+          transition: color 0.15s;
+        }
+        .nav-signup-link:hover { color: var(--text); }
 
         .nav-burger {
           display: none;
@@ -981,9 +989,14 @@ function OneToolsLandingInner({ videos, plans, release }) {
                 </button>
               </div>
             ) : (
-              <Link href="/login" className="nav-cta nav-cta-desktop">
-                {t.nav.login}
-              </Link>
+              <>
+                <Link href="/signup" className="nav-signup-link nav-cta-desktop">
+                  {t.nav.signup}
+                </Link>
+                <Link href="/login" className="nav-cta nav-cta-desktop">
+                  {t.nav.login}
+                </Link>
+              </>
             )}
             <button
               className="nav-burger"
@@ -1012,9 +1025,14 @@ function OneToolsLandingInner({ videos, plans, release }) {
                 {lang === "vi" ? "Đăng xuất" : "Log out"} ({user.email})
               </button>
             ) : (
-              <Link href="/login" className="nav-cta" onClick={() => setMobileMenuOpen(false)}>
-                {t.nav.login}
-              </Link>
+              <>
+                <Link href="/signup" className="nav-cta" onClick={() => setMobileMenuOpen(false)}>
+                  {t.nav.signup}
+                </Link>
+                <Link href="/login" className="nav-cta" onClick={() => setMobileMenuOpen(false)}>
+                  {t.nav.login}
+                </Link>
+              </>
             )}
           </div>
         )}
