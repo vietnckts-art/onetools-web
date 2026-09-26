@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "../../lib/supabaseClient";
 import { getPaddle } from "../../lib/paddleClient";
@@ -21,9 +21,8 @@ const STR = {
     comingSoonMsg:
       "Thanh toán PayOS đang được hoàn thiện, chưa sử dụng được. Vui lòng chọn tab Quốc tế (Paddle) để thanh toán ngay, hoặc liên hệ để được hỗ trợ chuyển khoản thủ công.",
     contactBtn: "Liên hệ hỗ trợ",
-    payBtn: "Thanh toán qua Paddle",
-    payBtnBusy: "Đang mở...",
-    payError: "Không mở được cổng thanh toán. Vui lòng thử lại hoặc liên hệ hỗ trợ.",
+    payError: "Không tải được form thanh toán. Vui lòng tải lại trang hoặc liên hệ hỗ trợ.",
+    noPaddlePrice: "Gói này chưa hỗ trợ thanh toán quốc tế qua Paddle. Vui lòng liên hệ hỗ trợ.",
     perYear: "/ năm",
   },
   en: {
@@ -40,49 +39,59 @@ const STR = {
     comingSoonMsg:
       "PayOS payment is still being finished and isn't available yet. Please use the International (Paddle) tab to pay now, or contact us for manual bank transfer support.",
     contactBtn: "Contact support",
-    payBtn: "Pay with Paddle",
-    payBtnBusy: "Opening...",
-    payError: "Couldn't open checkout. Please try again or contact support.",
+    payError: "Couldn't load the payment form. Please reload the page or contact support.",
+    noPaddlePrice: "This plan doesn't support Paddle payment yet. Please contact support.",
     perYear: "/ year",
   },
 };
+
+// Class name (KHÔNG phải id) mà Paddle.js dùng để tìm đúng chỗ nhúng iframe khi
+// displayMode: "inline" — xem developer.paddle.com/paddle-js/methods/paddle-checkout-open.
+const PADDLE_FRAME_CLASS = "paddle-checkout-frame";
 
 export default function CheckoutClient({ plan, country }) {
   const { lang, mounted } = useLang();
   const [method, setMethod] = useState(country === "VN" ? "payos" : "paddle");
   const [user, setUser] = useState(null);
-  const [localizedPrice, setLocalizedPrice] = useState(null);
-  const [busy, setBusy] = useState(false);
+  const [sessionChecked, setSessionChecked] = useState(false);
   const [error, setError] = useState("");
+  const openedRef = useRef(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setUser(data.session?.user ?? null);
+      setSessionChecked(true);
     });
   }, []);
 
+  // Nhúng thẳng form Paddle Checkout (displayMode "inline") vào khối .paddle-checkout-frame ngay trong
+  // trang này — KHÔNG mở popup/overlay riêng nữa. Chờ đã biết trạng thái đăng nhập (sessionChecked) để
+  // prefill đúng email nếu có, và chỉ mở đúng 1 lần (openedRef) — 2 khối tab (PayOS/Paddle) luôn nằm sẵn
+  // trong DOM, chỉ ẩn/hiện bằng CSS (xem className "hidden" bên dưới), nên form Paddle không bị mất khi
+  // khách chuyển qua lại giữa 2 tab.
   useEffect(() => {
-    if (!plan?.paddle_price_id) return;
-    let cancelled = false;
+    if (!plan?.paddle_price_id || !sessionChecked || openedRef.current) return;
+    openedRef.current = true;
     getPaddle()
-      .then((paddle) =>
-        paddle.PricePreview({
+      .then((paddle) => {
+        paddle.Checkout.open({
           items: [{ priceId: plan.paddle_price_id, quantity: 1 }],
-          ...(country ? { address: { countryCode: country } } : {}),
-        })
-      )
-      .then((result) => {
-        if (cancelled) return;
-        const total = result?.data?.details?.lineItems?.[0]?.formattedTotals?.total;
-        if (total) setLocalizedPrice(total);
+          ...(user?.email ? { customer: { email: user.email } } : {}),
+          settings: {
+            displayMode: "inline",
+            frameTarget: PADDLE_FRAME_CLASS,
+            frameInitialHeight: 450,
+            frameStyle: "width: 100%; min-width: 280px; background-color: transparent; border: none;",
+            successUrl: `${window.location.origin}/welcome`,
+          },
+        });
       })
       .catch((err) => {
-        console.error("[Paddle] Không lấy được giá theo khu vực (PricePreview):", err.message);
+        console.error("[Paddle] Không nhúng được Checkout inline:", err.message);
+        openedRef.current = false;
+        setError(STR[lang].payError);
       });
-    return () => {
-      cancelled = true;
-    };
-  }, [plan, country]);
+  }, [plan, user, sessionChecked, lang]);
 
   if (!mounted) return null;
   const s = STR[lang];
@@ -104,29 +113,6 @@ export default function CheckoutClient({ plan, country }) {
 
   const name = lang === "vi" ? plan.name_vi : plan.name_en;
   const vndPrice = plan.price;
-  const usdPrice = localizedPrice || (plan.price_usd ? `$${plan.price_usd}` : null);
-
-  const handlePay = async () => {
-    setError("");
-    setBusy(true);
-    try {
-      const paddle = await getPaddle();
-      paddle.Checkout.open({
-        items: [{ priceId: plan.paddle_price_id, quantity: 1 }],
-        ...(user?.email ? { customer: { email: user.email } } : {}),
-        settings: {
-          displayMode: "overlay",
-          variant: "one-page",
-          successUrl: `${window.location.origin}/welcome`,
-        },
-      });
-    } catch (err) {
-      console.error("[Paddle] Không mở được Checkout:", err.message);
-      setError(s.payError);
-    } finally {
-      setBusy(false);
-    }
-  };
 
   return (
     <div className="checkout-root">
@@ -136,17 +122,8 @@ export default function CheckoutClient({ plan, country }) {
           {s.back}
         </Link>
 
-        <div className="checkout-plan">
-          <div className="checkout-plan-name">{name}</div>
-          <div className="checkout-plan-price mono">
-            {vndPrice ? `₫${vndPrice}` : ""}
-            {vndPrice && usdPrice ? "  ·  " : ""}
-            {usdPrice}
-            <span className="period"> {s.perYear}</span>
-          </div>
-        </div>
-
         <h1 className="checkout-title">{s.title}</h1>
+        <div className="checkout-plan-name">{name}</div>
 
         <div className="checkout-tabs">
           <button
@@ -163,28 +140,30 @@ export default function CheckoutClient({ plan, country }) {
           </button>
         </div>
 
-        {method === "payos" ? (
-          <div className="checkout-card">
-            <p className="checkout-sub">{s.domesticNote}</p>
-            <div className="checkout-price-big mono">{vndPrice ? `₫${vndPrice}` : "—"}</div>
-            <span className="checkout-badge">{s.comingSoon}</span>
-            <p className="checkout-sub" style={{ marginTop: 14 }}>
-              {s.comingSoonMsg}
-            </p>
-            <a href="mailto:support@onetools-bim.com" className="checkout-btn">
-              {s.contactBtn}
-            </a>
-          </div>
-        ) : (
-          <div className="checkout-card">
-            <p className="checkout-sub">{s.intlNote}</p>
-            <div className="checkout-price-big mono">{usdPrice || "—"}</div>
-            <button className="checkout-btn primary" disabled={busy} onClick={handlePay}>
-              {busy ? s.payBtnBusy : s.payBtn}
-            </button>
-            {error && <p className="checkout-error">{error}</p>}
-          </div>
-        )}
+        {/* 2 khối luôn nằm trong DOM, chỉ ẩn/hiện bằng CSS — giữ nguyên form Paddle đã nhúng khi đổi tab */}
+        <div className={`checkout-card ${method === "payos" ? "" : "is-hidden"}`}>
+          <p className="checkout-sub">{s.domesticNote}</p>
+          <div className="checkout-price-big mono">{vndPrice ? `₫${vndPrice}` : "—"}</div>
+          <span className="checkout-badge">{s.comingSoon}</span>
+          <p className="checkout-sub" style={{ marginTop: 14 }}>
+            {s.comingSoonMsg}
+          </p>
+          <a href="mailto:support@onetools-bim.com" className="checkout-btn">
+            {s.contactBtn}
+          </a>
+        </div>
+
+        <div className={`checkout-card ${method === "paddle" ? "" : "is-hidden"}`}>
+          <p className="checkout-sub">{s.intlNote}</p>
+          {plan.paddle_price_id ? (
+            <>
+              <div className={PADDLE_FRAME_CLASS}></div>
+              {error && <p className="checkout-error">{error}</p>}
+            </>
+          ) : (
+            <p className="checkout-error">{s.noPaddlePrice}</p>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -199,17 +178,14 @@ const checkoutCss = `
     font-family: 'Inter', -apple-system, sans-serif;
     display: flex; justify-content: center; padding: 48px 20px;
   }
-  .checkout-wrap { width: 100%; max-width: 440px; }
+  .checkout-wrap { width: 100%; max-width: 480px; }
   .checkout-back { display: inline-block; color: var(--text-dim); text-decoration: none; font-size: 13px; margin-bottom: 24px; }
   .checkout-back:hover { color: var(--accent); }
-  .checkout-plan { border: 1px solid var(--line); background: var(--bg-raised); padding: 18px 20px; margin-bottom: 24px; }
-  .checkout-plan-name { font-size: 13px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
-  .checkout-plan-price { font-size: 20px; font-weight: 700; }
-  .checkout-plan-price .period { font-size: 12px; font-weight: 400; color: var(--text-dim); }
   .checkout-title {
     font-family: 'Oswald', sans-serif; text-transform: uppercase;
-    font-size: 22px; font-weight: 700; margin: 0 0 18px;
+    font-size: 22px; font-weight: 700; margin: 0 0 6px;
   }
+  .checkout-plan-name { font-size: 13px; color: var(--accent); font-weight: 600; margin: 0 0 18px; }
   .checkout-tabs { display: flex; border: 1px solid var(--line); margin-bottom: 0; }
   .checkout-tabs button {
     flex: 1; padding: 12px; background: transparent; border: none; color: var(--text-dim);
@@ -217,6 +193,7 @@ const checkoutCss = `
   }
   .checkout-tabs button.active { background: var(--accent); color: #292929; }
   .checkout-card { border: 1px solid var(--line); border-top: none; background: var(--bg-raised); padding: 28px 20px; }
+  .checkout-card.is-hidden { display: none; }
   .checkout-sub { font-size: 13.5px; color: var(--text-dim); line-height: 1.6; margin: 0 0 18px; }
   .checkout-price-big { font-size: 30px; font-weight: 700; margin-bottom: 14px; }
   .checkout-badge {
@@ -232,4 +209,5 @@ const checkoutCss = `
   .checkout-btn.primary { background: var(--accent); color: #292929; border-color: var(--accent); }
   .checkout-btn:disabled { opacity: 0.6; cursor: not-allowed; }
   .checkout-error { font-size: 13px; color: #E08080; margin-top: 14px; }
+  .${PADDLE_FRAME_CLASS} { min-height: 420px; }
 `;
