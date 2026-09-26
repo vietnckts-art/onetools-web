@@ -5,14 +5,60 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 import { callEdgeFunction } from "../../lib/callEdgeFunction";
+import { useLang } from "../../lib/useLang";
+
+const STR = {
+  vi: {
+    title: "Đăng ký OneTools",
+    sub: "Tạo tài khoản để dùng thử miễn phí 15 ngày, hoặc kích hoạt license đã mua.",
+    email: "Email",
+    password: "Mật khẩu",
+    passwordPlaceholder: "Tối thiểu 6 ký tự",
+    confirmPassword: "Nhập lại mật khẩu",
+    submitBtn: "Đăng ký",
+    submitBtnBusy: "Đang đăng ký...",
+    haveAccount: "Đã có tài khoản? Đăng nhập",
+    errShort: "Mật khẩu cần ít nhất 6 ký tự.",
+    errMismatch: "Mật khẩu nhập lại không khớp.",
+    errGeneric: "Đăng ký thất bại, vui lòng thử lại.",
+  },
+  en: {
+    title: "Sign up for OneTools",
+    sub: "Create an account to start a 15-day free trial, or activate a license you've purchased.",
+    email: "Email",
+    password: "Password",
+    passwordPlaceholder: "At least 6 characters",
+    confirmPassword: "Confirm password",
+    submitBtn: "Sign up",
+    submitBtnBusy: "Signing up...",
+    haveAccount: "Already have an account? Log in",
+    errShort: "Password must be at least 6 characters.",
+    errMismatch: "Passwords do not match.",
+    errGeneric: "Sign up failed, please try again.",
+  },
+};
+
+// Message lỗi từ server (Edge Function) luôn trả tiếng Việt cố định — dịch những message đã biết
+// khi người dùng đang chọn EN, message lạ thì giữ nguyên (còn hơn không hiển thị gì).
+function translateServerMessage(message, lang) {
+  if (lang !== "en" || !message) return message;
+  if (message.includes("đã có tài khoản")) {
+    return "This email already has an account — please log in instead of signing up.";
+  }
+  return message;
+}
 
 export default function SignupPage() {
   const router = useRouter();
+  const { lang, setLang, mounted } = useLang();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [status, setStatus] = useState("idle"); // idle | sending | error
   const [errorMsg, setErrorMsg] = useState("");
+
+  if (!mounted) return null;
+  const s = STR[lang];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,12 +66,12 @@ export default function SignupPage() {
 
     if (password.length < 6) {
       setStatus("error");
-      setErrorMsg("Mật khẩu cần ít nhất 6 ký tự.");
+      setErrorMsg(s.errShort);
       return;
     }
     if (password !== confirmPassword) {
       setStatus("error");
-      setErrorMsg("Mật khẩu nhập lại không khớp.");
+      setErrorMsg(s.errMismatch);
       return;
     }
 
@@ -35,19 +81,16 @@ export default function SignupPage() {
 
     if (!ok || data.status !== "ok") {
       setStatus("error");
-      setErrorMsg(data.message || "Đăng ký thất bại, vui lòng thử lại.");
+      setErrorMsg(translateServerMessage(data.message, lang) || s.errGeneric);
       return;
     }
 
-    // Đăng ký xong, server đã trả sẵn access_token/refresh_token — set session luôn,
-    // khỏi bắt người dùng đăng nhập lại lần nữa.
     const { error: sessionError } = await supabase.auth.setSession({
       access_token: data.access_token,
       refresh_token: data.refresh_token,
     });
 
     if (sessionError) {
-      // Vẫn tạo tài khoản thành công — chỉ là set session tự động thất bại, cho qua trang login.
       router.push("/login");
       return;
     }
@@ -65,8 +108,18 @@ export default function SignupPage() {
           min-height: 100vh; background: var(--bg); color: var(--text);
           font-family: 'Inter', sans-serif;
           display: flex; align-items: center; justify-content: center;
-          padding: 24px;
+          padding: 24px; position: relative;
         }
+        .signup-lang {
+          position: absolute; top: 20px; right: 20px;
+          display: inline-flex; border: 1px solid var(--line); font-size: 12px;
+        }
+        .signup-lang button {
+          padding: 5px 10px; background: transparent; border: none;
+          color: var(--text-dim); cursor: pointer; letter-spacing: 0.04em;
+          font-family: 'Inter', -apple-system, sans-serif;
+        }
+        .signup-lang button.active { background: var(--accent); color: var(--bg); }
         .signup-card {
           width: 100%; max-width: 380px;
           border: 1px solid var(--line); background: var(--bg-raised);
@@ -88,7 +141,6 @@ export default function SignupPage() {
           margin-bottom: 18px; box-sizing: border-box;
         }
         .signup-input:focus { outline: none; border-color: var(--accent); }
-        .signup-hint { font-size: 11.5px; color: var(--text-dim); margin: -12px 0 18px; }
         .signup-btn {
           width: 100%; padding: 13px; background: var(--accent); color: var(--bg);
           border: none; font-family: 'JetBrains Mono', monospace; font-weight: 600;
@@ -101,13 +153,15 @@ export default function SignupPage() {
         .signup-links a { color: var(--text-dim); text-decoration: none; }
         .signup-links a:hover { color: var(--accent); }
       `}</style>
+      <div className="signup-lang">
+        <button className={lang === "vi" ? "active" : ""} onClick={() => setLang("vi")}>VI</button>
+        <button className={lang === "en" ? "active" : ""} onClick={() => setLang("en")}>EN</button>
+      </div>
       <div className="signup-card">
-        <h1 className="signup-title">Đăng ký OneTools</h1>
-        <p className="signup-sub">
-          Tạo tài khoản để dùng thử miễn phí 15 ngày, hoặc kích hoạt license đã mua.
-        </p>
+        <h1 className="signup-title">{s.title}</h1>
+        <p className="signup-sub">{s.sub}</p>
         <form onSubmit={handleSubmit}>
-          <label className="signup-label" htmlFor="email">Email</label>
+          <label className="signup-label" htmlFor="email">{s.email}</label>
           <input
             id="email"
             type="email"
@@ -117,17 +171,17 @@ export default function SignupPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-          <label className="signup-label" htmlFor="password">Mật khẩu</label>
+          <label className="signup-label" htmlFor="password">{s.password}</label>
           <input
             id="password"
             type="password"
             required
             className="signup-input"
-            placeholder="Tối thiểu 6 ký tự"
+            placeholder={s.passwordPlaceholder}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <label className="signup-label" htmlFor="confirm-password">Nhập lại mật khẩu</label>
+          <label className="signup-label" htmlFor="confirm-password">{s.confirmPassword}</label>
           <input
             id="confirm-password"
             type="password"
@@ -138,12 +192,12 @@ export default function SignupPage() {
             onChange={(e) => setConfirmPassword(e.target.value)}
           />
           <button className="signup-btn" type="submit" disabled={status === "sending"}>
-            {status === "sending" ? "Đang đăng ký..." : "Đăng ký"}
+            {status === "sending" ? s.submitBtnBusy : s.submitBtn}
           </button>
           {status === "error" && <p className="signup-msg error">{errorMsg}</p>}
         </form>
         <div className="signup-links">
-          <Link href="/login">Đã có tài khoản? Đăng nhập</Link>
+          <Link href="/login">{s.haveAccount}</Link>
         </div>
       </div>
     </div>

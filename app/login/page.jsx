@@ -4,25 +4,71 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
+import { useLang } from "../../lib/useLang";
 
-function mapErrorMessage(message) {
-  if (!message) return "Có lỗi xảy ra, vui lòng thử lại.";
-  if (message.includes("Invalid login credentials")) {
-    return "Email hoặc mật khẩu không đúng.";
-  }
-  if (message.includes("Email not confirmed")) {
-    return "Email chưa được xác nhận. Vui lòng liên hệ support@onetools-bim.com.";
-  }
+const STR = {
+  vi: {
+    loginTitle: "Đăng nhập OneTools",
+    loginSub: "Nhập email và mật khẩu đã đăng ký license.",
+    email: "Email",
+    password: "Mật khẩu",
+    loginBtn: "Đăng nhập",
+    loginBtnBusy: "Đang đăng nhập...",
+    forgot: "Quên mật khẩu?",
+    noAccount: "Chưa có tài khoản? Đăng ký",
+    forgotTitle: "Quên mật khẩu",
+    forgotSub: "Nhập email tài khoản — hệ thống sẽ gửi link đặt lại mật khẩu.",
+    forgotBtn: "Gửi email đặt lại mật khẩu",
+    forgotBtnBusy: "Đang gửi...",
+    sentMsg: (email) => (
+      <>Đã gửi email đặt lại mật khẩu tới <strong>{email}</strong>. Vui lòng kiểm tra hộp thư.</>
+    ),
+    backToLogin: "← Quay lại đăng nhập",
+    errGeneric: "Có lỗi xảy ra, vui lòng thử lại.",
+    errInvalidCreds: "Email hoặc mật khẩu không đúng.",
+    errNotConfirmed: "Email chưa được xác nhận. Vui lòng liên hệ support@onetools-bim.com.",
+  },
+  en: {
+    loginTitle: "Log in to OneTools",
+    loginSub: "Enter the email and password you registered your license with.",
+    email: "Email",
+    password: "Password",
+    loginBtn: "Log in",
+    loginBtnBusy: "Logging in...",
+    forgot: "Forgot password?",
+    noAccount: "Don't have an account? Sign up",
+    forgotTitle: "Forgot password",
+    forgotSub: "Enter your account email — we'll send you a password reset link.",
+    forgotBtn: "Send reset email",
+    forgotBtnBusy: "Sending...",
+    sentMsg: (email) => (
+      <>A password reset email has been sent to <strong>{email}</strong>. Please check your inbox.</>
+    ),
+    backToLogin: "← Back to login",
+    errGeneric: "Something went wrong, please try again.",
+    errInvalidCreds: "Incorrect email or password.",
+    errNotConfirmed: "Email not confirmed yet. Please contact support@onetools-bim.com.",
+  },
+};
+
+function mapErrorMessage(message, s) {
+  if (!message) return s.errGeneric;
+  if (message.includes("Invalid login credentials")) return s.errInvalidCreds;
+  if (message.includes("Email not confirmed")) return s.errNotConfirmed;
   return message;
 }
 
 export default function LoginPage() {
   const router = useRouter();
+  const { lang, setLang, mounted } = useLang();
   const [mode, setMode] = useState("login"); // login | forgot
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState("idle"); // idle | sending | sent | error
   const [errorMsg, setErrorMsg] = useState("");
+
+  if (!mounted) return null;
+  const s = STR[lang];
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -33,7 +79,7 @@ export default function LoginPage() {
 
     if (error) {
       setStatus("error");
-      setErrorMsg(mapErrorMessage(error.message));
+      setErrorMsg(mapErrorMessage(error.message, s));
       return;
     }
 
@@ -52,7 +98,7 @@ export default function LoginPage() {
 
     if (error) {
       setStatus("error");
-      setErrorMsg(mapErrorMessage(error.message));
+      setErrorMsg(mapErrorMessage(error.message, s));
     } else {
       setStatus("sent");
     }
@@ -74,8 +120,18 @@ export default function LoginPage() {
           min-height: 100vh; background: var(--bg); color: var(--text);
           font-family: 'Inter', sans-serif;
           display: flex; align-items: center; justify-content: center;
-          padding: 24px;
+          padding: 24px; position: relative;
         }
+        .login-lang {
+          position: absolute; top: 20px; right: 20px;
+          display: inline-flex; border: 1px solid var(--line); font-size: 12px;
+        }
+        .login-lang button {
+          padding: 5px 10px; background: transparent; border: none;
+          color: var(--text-dim); cursor: pointer; letter-spacing: 0.04em;
+          font-family: 'Inter', -apple-system, sans-serif;
+        }
+        .login-lang button.active { background: var(--accent); color: var(--bg); }
         .login-card {
           width: 100%; max-width: 380px;
           border: 1px solid var(--line); background: var(--bg-raised);
@@ -116,13 +172,17 @@ export default function LoginPage() {
         }
         .login-links a:hover, .login-links button.linklike:hover { color: var(--accent); }
       `}</style>
+      <div className="login-lang">
+        <button className={lang === "vi" ? "active" : ""} onClick={() => setLang("vi")}>VI</button>
+        <button className={lang === "en" ? "active" : ""} onClick={() => setLang("en")}>EN</button>
+      </div>
       <div className="login-card">
         {mode === "login" ? (
           <>
-            <h1 className="login-title">Đăng nhập OneTools</h1>
-            <p className="login-sub">Nhập email và mật khẩu đã đăng ký license.</p>
+            <h1 className="login-title">{s.loginTitle}</h1>
+            <p className="login-sub">{s.loginSub}</p>
             <form onSubmit={handleLogin}>
-              <label className="login-label" htmlFor="email">Email</label>
+              <label className="login-label" htmlFor="email">{s.email}</label>
               <input
                 id="email"
                 type="email"
@@ -132,7 +192,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
-              <label className="login-label" htmlFor="password">Mật khẩu</label>
+              <label className="login-label" htmlFor="password">{s.password}</label>
               <input
                 id="password"
                 type="password"
@@ -143,30 +203,26 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
               />
               <button className="login-btn" type="submit" disabled={status === "sending"}>
-                {status === "sending" ? "Đang đăng nhập..." : "Đăng nhập"}
+                {status === "sending" ? s.loginBtnBusy : s.loginBtn}
               </button>
               {status === "error" && <p className="login-msg error">{errorMsg}</p>}
             </form>
             <div className="login-links">
               <button type="button" className="linklike" onClick={() => switchMode("forgot")}>
-                Quên mật khẩu?
+                {s.forgot}
               </button>
-              <Link href="/signup">Chưa có tài khoản? Đăng ký</Link>
+              <Link href="/signup">{s.noAccount}</Link>
             </div>
           </>
         ) : (
           <>
-            <h1 className="login-title">Quên mật khẩu</h1>
-            <p className="login-sub">
-              Nhập email tài khoản — hệ thống sẽ gửi link đặt lại mật khẩu.
-            </p>
+            <h1 className="login-title">{s.forgotTitle}</h1>
+            <p className="login-sub">{s.forgotSub}</p>
             {status === "sent" ? (
-              <p className="login-msg success">
-                Đã gửi email đặt lại mật khẩu tới <strong>{email}</strong>. Vui lòng kiểm tra hộp thư.
-              </p>
+              <p className="login-msg success">{s.sentMsg(email)}</p>
             ) : (
               <form onSubmit={handleForgotPassword}>
-                <label className="login-label" htmlFor="forgot-email">Email</label>
+                <label className="login-label" htmlFor="forgot-email">{s.email}</label>
                 <input
                   id="forgot-email"
                   type="email"
@@ -177,14 +233,14 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                 />
                 <button className="login-btn" type="submit" disabled={status === "sending"}>
-                  {status === "sending" ? "Đang gửi..." : "Gửi email đặt lại mật khẩu"}
+                  {status === "sending" ? s.forgotBtnBusy : s.forgotBtn}
                 </button>
                 {status === "error" && <p className="login-msg error">{errorMsg}</p>}
               </form>
             )}
             <div className="login-links">
               <button type="button" className="linklike" onClick={() => switchMode("login")}>
-                ← Quay lại đăng nhập
+                {s.backToLogin}
               </button>
             </div>
           </>

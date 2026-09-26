@@ -4,11 +4,61 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 import { callEdgeFunction } from "../../lib/callEdgeFunction";
+import { useLang } from "../../lib/useLang";
 
-const STATUS_LABEL = {
-  active: "Đang hoạt động",
-  trial: "Dùng thử",
-  expired: "Đã hết hạn",
+const STR = {
+  vi: {
+    pageTitle: "Tài khoản OneTools",
+    logout: "Đăng xuất",
+    currentLicense: "License hiện tại",
+    status: "Trạng thái",
+    licenseType: "Loại license",
+    expires: "Hết hạn",
+    licenseKey: "License Key",
+    maxSeats: "Số máy tối đa",
+    noLicense:
+      "Tài khoản chưa có License nào còn hiệu lực. Nếu bạn đã mua license, dùng ô bên dưới để nhập License Key.",
+    devices: (used, max) => `Máy đã kích hoạt (${used}/${max})`,
+    noActiveLicenseForDevices: "Chưa có License nào đang hoạt động.",
+    noDevices: "Chưa có máy nào kích hoạt License này.",
+    device: (n, hwid) => `Máy ${n} — ${hwid}`,
+    deviceMeta: (bound, lastSeen) => `Kích hoạt: ${bound} · Hoạt động gần nhất: ${lastSeen}`,
+    enterKey: "Nhập License Key",
+    keyPlaceholder: "Dán License Key vào đây",
+    activateBtn: "Kích hoạt",
+    activateBtnBusy: "Đang xử lý...",
+    claimSuccess: "Đã gắn License Key vào tài khoản.",
+    claimErrGeneric: "Không nhận được License Key, vui lòng kiểm tra lại.",
+    otherLicenses: "Lịch sử License khác",
+    loading: "Đang tải...",
+    statusLabel: { active: "Đang hoạt động", trial: "Dùng thử", expired: "Đã hết hạn" },
+  },
+  en: {
+    pageTitle: "OneTools Account",
+    logout: "Log out",
+    currentLicense: "Current License",
+    status: "Status",
+    licenseType: "License type",
+    expires: "Expires",
+    licenseKey: "License Key",
+    maxSeats: "Max devices",
+    noLicense:
+      "Your account doesn't have an active license yet. If you've purchased one, use the box below to enter your License Key.",
+    devices: (used, max) => `Activated devices (${used}/${max})`,
+    noActiveLicenseForDevices: "No active license yet.",
+    noDevices: "No devices have activated this license yet.",
+    device: (n, hwid) => `Device ${n} — ${hwid}`,
+    deviceMeta: (bound, lastSeen) => `Activated: ${bound} · Last seen: ${lastSeen}`,
+    enterKey: "Enter License Key",
+    keyPlaceholder: "Paste your License Key here",
+    activateBtn: "Activate",
+    activateBtnBusy: "Processing...",
+    claimSuccess: "License Key linked to your account.",
+    claimErrGeneric: "Couldn't activate this License Key, please check it and try again.",
+    otherLicenses: "Other licenses",
+    loading: "Loading...",
+    statusLabel: { active: "Active", trial: "Trial", expired: "Expired" },
+  },
 };
 
 const TYPE_LABEL = {
@@ -19,10 +69,21 @@ const TYPE_LABEL = {
   dev_preview: "Dev Preview",
 };
 
-function formatDate(value) {
+// Message lỗi từ server (Edge Function claim-license-key) luôn trả tiếng Việt cố định — dịch những
+// message đã biết khi người dùng đang chọn EN, message lạ thì giữ nguyên.
+function translateServerMessage(message, lang) {
+  if (lang !== "en" || !message) return message;
+  if (message.includes("không tồn tại")) return "This License Key doesn't exist.";
+  if (message.includes("đã thuộc về một tài khoản khác")) {
+    return "This License Key already belongs to another account.";
+  }
+  return message;
+}
+
+function formatDate(value, lang) {
   if (!value) return "—";
   try {
-    return new Date(value).toLocaleString("vi-VN", {
+    return new Date(value).toLocaleString(lang === "vi" ? "vi-VN" : "en-US", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -45,6 +106,7 @@ function pickCurrentLicense(licenses) {
 
 export default function AccountPage() {
   const router = useRouter();
+  const { lang, setLang, mounted: langMounted } = useLang();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [licenses, setLicenses] = useState([]);
@@ -75,7 +137,7 @@ export default function AccountPage() {
       .order("created_at", { ascending: false });
 
     if (licenseError) {
-      setErrorMsg("Không tải được thông tin License: " + licenseError.message);
+      setErrorMsg(licenseError.message);
       setLoading(false);
       return;
     }
@@ -104,6 +166,9 @@ export default function AccountPage() {
     loadData();
   }, [loadData]);
 
+  if (!langMounted) return null;
+  const s = STR[lang];
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/login");
@@ -128,12 +193,12 @@ export default function AccountPage() {
 
     if (!ok || data.status !== "ok") {
       setClaimStatus("error");
-      setClaimMsg(data.message || "Không nhận được License Key, vui lòng kiểm tra lại.");
+      setClaimMsg(translateServerMessage(data.message, lang) || s.claimErrGeneric);
       return;
     }
 
     setClaimStatus("success");
-    setClaimMsg("Đã gắn License Key vào tài khoản.");
+    setClaimMsg(s.claimSuccess);
     setLicenseKeyInput("");
     setLoading(true);
     await loadData();
@@ -159,11 +224,22 @@ export default function AccountPage() {
           display: flex; justify-content: space-between; align-items: center;
           margin-bottom: 28px; flex-wrap: wrap; gap: 12px;
         }
+        .acc-header-left { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
         .acc-title {
           font-family: 'Oswald', sans-serif; text-transform: uppercase;
           font-size: 24px; font-weight: 700; margin: 0;
         }
         .acc-email { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
+        .acc-header-right { display: flex; align-items: center; gap: 10px; }
+        .acc-lang {
+          display: inline-flex; border: 1px solid var(--line); font-size: 12px;
+        }
+        .acc-lang button {
+          padding: 5px 10px; background: transparent; border: none;
+          color: var(--text-dim); cursor: pointer; letter-spacing: 0.04em;
+          font-family: 'Inter', -apple-system, sans-serif;
+        }
+        .acc-lang button.active { background: var(--accent); color: var(--bg); }
         .acc-logout {
           background: none; border: 1px solid var(--line); color: var(--text-dim);
           padding: 9px 16px; font-size: 13px; cursor: pointer;
@@ -229,71 +305,78 @@ export default function AccountPage() {
       `}</style>
 
       <div className="acc-shell">
+        <div className="acc-header">
+          <div className="acc-header-left">
+            <div>
+              <h1 className="acc-title">{s.pageTitle}</h1>
+              {user && <p className="acc-email">{user.email}</p>}
+            </div>
+          </div>
+          <div className="acc-header-right">
+            <div className="acc-lang">
+              <button className={lang === "vi" ? "active" : ""} onClick={() => setLang("vi")}>VI</button>
+              <button className={lang === "en" ? "active" : ""} onClick={() => setLang("en")}>EN</button>
+            </div>
+            {user && <button className="acc-logout" onClick={handleLogout}>{s.logout}</button>}
+          </div>
+        </div>
+
         {loading ? (
-          <div className="acc-loading">Đang tải...</div>
+          <div className="acc-loading">{s.loading}</div>
         ) : errorMsg ? (
           <div className="acc-error">{errorMsg}</div>
         ) : (
           <>
-            <div className="acc-header">
-              <div>
-                <h1 className="acc-title">Tài khoản OneTools</h1>
-                <p className="acc-email">{user?.email}</p>
-              </div>
-              <button className="acc-logout" onClick={handleLogout}>Đăng xuất</button>
-            </div>
-
             <div className="acc-card">
-              <p className="acc-card-title">License hiện tại</p>
+              <p className="acc-card-title">{s.currentLicense}</p>
               {current ? (
                 <>
                   <div className="acc-row">
-                    <span className="acc-row-label">Trạng thái</span>
+                    <span className="acc-row-label">{s.status}</span>
                     <span className="acc-row-value">
                       <span className={`acc-badge ${current.status}`}>
-                        {STATUS_LABEL[current.status] || current.status}
+                        {s.statusLabel[current.status] || current.status}
                       </span>
                     </span>
                   </div>
                   <div className="acc-row">
-                    <span className="acc-row-label">Loại license</span>
+                    <span className="acc-row-label">{s.licenseType}</span>
                     <span className="acc-row-value">
                       {TYPE_LABEL[current.license_type] || current.license_type || "—"}
                     </span>
                   </div>
                   <div className="acc-row">
-                    <span className="acc-row-label">Hết hạn</span>
-                    <span className="acc-row-value">{formatDate(current.expires_at)}</span>
+                    <span className="acc-row-label">{s.expires}</span>
+                    <span className="acc-row-value">{formatDate(current.expires_at, lang)}</span>
                   </div>
                   <div className="acc-row">
-                    <span className="acc-row-label">License Key</span>
+                    <span className="acc-row-label">{s.licenseKey}</span>
                     <span className="acc-row-value">{current.license_key}</span>
                   </div>
                   <div className="acc-row">
-                    <span className="acc-row-label">Số máy tối đa</span>
+                    <span className="acc-row-label">{s.maxSeats}</span>
                     <span className="acc-row-value">{current.max_seats}</span>
                   </div>
                 </>
               ) : (
-                <p className="acc-empty">
-                  Tài khoản chưa có License nào còn hiệu lực. Nếu bạn đã mua license, dùng ô bên dưới để
-                  nhập License Key.
-                </p>
+                <p className="acc-empty">{s.noLicense}</p>
               )}
             </div>
 
             <div className="acc-card">
-              <p className="acc-card-title">Máy đã kích hoạt {current ? `(${seats.length}/${current.max_seats})` : ""}</p>
+              <p className="acc-card-title">
+                {current ? s.devices(seats.length, current.max_seats) : s.devices(0, 0)}
+              </p>
               {!current ? (
-                <p className="acc-empty">Chưa có License nào đang hoạt động.</p>
+                <p className="acc-empty">{s.noActiveLicenseForDevices}</p>
               ) : seats.length === 0 ? (
-                <p className="acc-empty">Chưa có máy nào kích hoạt License này.</p>
+                <p className="acc-empty">{s.noDevices}</p>
               ) : (
                 seats.map((seat, index) => (
                   <div className="acc-seat" key={seat.id}>
-                    <div className="acc-seat-hwid">Máy {index + 1} — {seat.device_hwid}</div>
+                    <div className="acc-seat-hwid">{s.device(index + 1, seat.device_hwid)}</div>
                     <div className="acc-seat-meta">
-                      Kích hoạt: {formatDate(seat.bound_at)} · Hoạt động gần nhất: {formatDate(seat.last_seen_at)}
+                      {s.deviceMeta(formatDate(seat.bound_at, lang), formatDate(seat.last_seen_at, lang))}
                     </div>
                   </div>
                 ))
@@ -301,16 +384,16 @@ export default function AccountPage() {
             </div>
 
             <div className="acc-card">
-              <p className="acc-card-title">Nhập License Key</p>
+              <p className="acc-card-title">{s.enterKey}</p>
               <form className="acc-form" onSubmit={handleClaim}>
                 <input
                   className="acc-input"
-                  placeholder="Dán License Key vào đây"
+                  placeholder={s.keyPlaceholder}
                   value={licenseKeyInput}
                   onChange={(e) => setLicenseKeyInput(e.target.value)}
                 />
                 <button className="acc-btn" type="submit" disabled={claimStatus === "sending"}>
-                  {claimStatus === "sending" ? "Đang xử lý..." : "Kích hoạt"}
+                  {claimStatus === "sending" ? s.activateBtnBusy : s.activateBtn}
                 </button>
               </form>
               {claimStatus === "error" && <p className="acc-msg error">{claimMsg}</p>}
@@ -319,11 +402,13 @@ export default function AccountPage() {
 
             {otherLicenses.length > 0 && (
               <div className="acc-card">
-                <p className="acc-card-title">Lịch sử License khác</p>
+                <p className="acc-card-title">{s.otherLicenses}</p>
                 {otherLicenses.map((l) => (
                   <div className="acc-history-item" key={l.id}>
                     <span>{TYPE_LABEL[l.license_type] || l.license_type} · {l.license_key}</span>
-                    <span className={`acc-badge ${l.status}`}>{STATUS_LABEL[l.status] || l.status}</span>
+                    <span className={`acc-badge ${l.status}`}>
+                      {s.statusLabel[l.status] || l.status}
+                    </span>
                   </div>
                 ))}
               </div>

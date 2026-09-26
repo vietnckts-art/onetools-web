@@ -3,17 +3,54 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
+import { useLang } from "../../lib/useLang";
 
-// Trang này là đích đến của link "Đặt lại mật khẩu" trong email Supabase gửi (Site URL +
-// /reset-password đã được thêm vào Auth → URL Configuration → Redirect URLs).
-//
-// Khi bấm vào link, Supabase xác thực token rồi redirect về đây kèm access_token/refresh_token
-// trong URL (dạng #access_token=...&type=recovery...) — supabase-js tự đọc phần này khi khởi tạo
-// (detectSessionInUrl mặc định bật) và bắn sự kiện "PASSWORD_RECOVERY". Trang chỉ cần lắng nghe sự
-// kiện đó (và tự kiểm tra thêm URL hash phòng trường hợp sự kiện bắn ra trước khi kịp lắng nghe) để
-// biết lúc nào được phép hiện form đặt mật khẩu mới.
+const STR = {
+  vi: {
+    checkingTitle: "Đang kiểm tra link...",
+    checkingSub: "Vui lòng đợi trong giây lát.",
+    invalidTitle: "Link không hợp lệ",
+    invalidSub:
+      "Link đặt lại mật khẩu đã hết hạn hoặc không còn hiệu lực. Vui lòng yêu cầu gửi lại từ trang đăng nhập.",
+    backToLogin: "← Quay lại đăng nhập",
+    readyTitle: "Đặt mật khẩu mới",
+    readySub: "Nhập mật khẩu mới cho tài khoản OneTools của bạn.",
+    newPassword: "Mật khẩu mới",
+    passwordPlaceholder: "Tối thiểu 6 ký tự",
+    confirmPassword: "Nhập lại mật khẩu",
+    saveBtn: "Lưu mật khẩu mới",
+    saveBtnBusy: "Đang lưu...",
+    doneTitle: "Thành công",
+    doneMsg: "Mật khẩu đã được cập nhật. Bạn có thể đăng nhập lại bằng mật khẩu mới.",
+    goToLogin: "Đến trang đăng nhập",
+    errShort: "Mật khẩu cần ít nhất 6 ký tự.",
+    errMismatch: "Mật khẩu nhập lại không khớp.",
+  },
+  en: {
+    checkingTitle: "Checking link...",
+    checkingSub: "Please wait a moment.",
+    invalidTitle: "Invalid link",
+    invalidSub:
+      "This password reset link has expired or is no longer valid. Please request a new one from the login page.",
+    backToLogin: "← Back to login",
+    readyTitle: "Set a new password",
+    readySub: "Enter a new password for your OneTools account.",
+    newPassword: "New password",
+    passwordPlaceholder: "At least 6 characters",
+    confirmPassword: "Confirm password",
+    saveBtn: "Save new password",
+    saveBtnBusy: "Saving...",
+    doneTitle: "Success",
+    doneMsg: "Your password has been updated. You can now log in with your new password.",
+    goToLogin: "Go to login",
+    errShort: "Password must be at least 6 characters.",
+    errMismatch: "Passwords do not match.",
+  },
+};
+
 export default function ResetPasswordPage() {
   const router = useRouter();
+  const { lang, setLang, mounted: langMounted } = useLang();
   const [phase, setPhase] = useState("checking"); // checking | ready | invalid | done
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -37,8 +74,6 @@ export default function ResetPasswordPage() {
       }
     });
 
-    // Nếu sau 3s vẫn chưa xác định được (không có hash hợp lệ, không có sự kiện) → coi như link
-    // không hợp lệ / đã hết hạn, tránh giữ người dùng mãi ở màn hình "đang kiểm tra".
     const timeout = setTimeout(() => {
       setPhase((current) => (current === "checking" ? "invalid" : current));
     }, 3000);
@@ -49,18 +84,21 @@ export default function ResetPasswordPage() {
     };
   }, []);
 
+  if (!langMounted) return null;
+  const s = STR[lang];
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg("");
 
     if (password.length < 6) {
       setStatus("error");
-      setErrorMsg("Mật khẩu cần ít nhất 6 ký tự.");
+      setErrorMsg(s.errShort);
       return;
     }
     if (password !== confirmPassword) {
       setStatus("error");
-      setErrorMsg("Mật khẩu nhập lại không khớp.");
+      setErrorMsg(s.errMismatch);
       return;
     }
 
@@ -86,8 +124,18 @@ export default function ResetPasswordPage() {
           min-height: 100vh; background: var(--bg); color: var(--text);
           font-family: 'Inter', sans-serif;
           display: flex; align-items: center; justify-content: center;
-          padding: 24px;
+          padding: 24px; position: relative;
         }
+        .reset-lang {
+          position: absolute; top: 20px; right: 20px;
+          display: inline-flex; border: 1px solid var(--line); font-size: 12px;
+        }
+        .reset-lang button {
+          padding: 5px 10px; background: transparent; border: none;
+          color: var(--text-dim); cursor: pointer; letter-spacing: 0.04em;
+          font-family: 'Inter', -apple-system, sans-serif;
+        }
+        .reset-lang button.active { background: var(--accent); color: var(--bg); }
         .reset-card {
           width: 100%; max-width: 380px;
           border: 1px solid var(--line); background: var(--bg-raised);
@@ -122,43 +170,46 @@ export default function ResetPasswordPage() {
         .reset-links a { color: var(--text-dim); text-decoration: none; }
         .reset-links a:hover { color: var(--accent); }
       `}</style>
+
+      <div className="reset-lang">
+        <button className={lang === "vi" ? "active" : ""} onClick={() => setLang("vi")}>VI</button>
+        <button className={lang === "en" ? "active" : ""} onClick={() => setLang("en")}>EN</button>
+      </div>
+
       <div className="reset-card">
         {phase === "checking" && (
           <>
-            <h1 className="reset-title">Đang kiểm tra link...</h1>
-            <p className="reset-sub">Vui lòng đợi trong giây lát.</p>
+            <h1 className="reset-title">{s.checkingTitle}</h1>
+            <p className="reset-sub">{s.checkingSub}</p>
           </>
         )}
 
         {phase === "invalid" && (
           <>
-            <h1 className="reset-title">Link không hợp lệ</h1>
-            <p className="reset-sub">
-              Link đặt lại mật khẩu đã hết hạn hoặc không còn hiệu lực. Vui lòng yêu cầu gửi lại từ
-              trang đăng nhập.
-            </p>
+            <h1 className="reset-title">{s.invalidTitle}</h1>
+            <p className="reset-sub">{s.invalidSub}</p>
             <div className="reset-links">
-              <a href="/login">← Quay lại đăng nhập</a>
+              <a href="/login">{s.backToLogin}</a>
             </div>
           </>
         )}
 
         {phase === "ready" && (
           <>
-            <h1 className="reset-title">Đặt mật khẩu mới</h1>
-            <p className="reset-sub">Nhập mật khẩu mới cho tài khoản OneTools của bạn.</p>
+            <h1 className="reset-title">{s.readyTitle}</h1>
+            <p className="reset-sub">{s.readySub}</p>
             <form onSubmit={handleSubmit}>
-              <label className="reset-label" htmlFor="password">Mật khẩu mới</label>
+              <label className="reset-label" htmlFor="password">{s.newPassword}</label>
               <input
                 id="password"
                 type="password"
                 required
                 className="reset-input"
-                placeholder="Tối thiểu 6 ký tự"
+                placeholder={s.passwordPlaceholder}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
-              <label className="reset-label" htmlFor="confirm-password">Nhập lại mật khẩu</label>
+              <label className="reset-label" htmlFor="confirm-password">{s.confirmPassword}</label>
               <input
                 id="confirm-password"
                 type="password"
@@ -169,7 +220,7 @@ export default function ResetPasswordPage() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
               />
               <button className="reset-btn" type="submit" disabled={status === "saving"}>
-                {status === "saving" ? "Đang lưu..." : "Lưu mật khẩu mới"}
+                {status === "saving" ? s.saveBtnBusy : s.saveBtn}
               </button>
               {status === "error" && <p className="reset-msg error">{errorMsg}</p>}
             </form>
@@ -178,12 +229,10 @@ export default function ResetPasswordPage() {
 
         {phase === "done" && (
           <>
-            <h1 className="reset-title">Thành công</h1>
-            <p className="reset-msg success">
-              Mật khẩu đã được cập nhật. Bạn có thể đăng nhập lại bằng mật khẩu mới.
-            </p>
+            <h1 className="reset-title">{s.doneTitle}</h1>
+            <p className="reset-msg success">{s.doneMsg}</p>
             <button className="reset-btn" style={{ marginTop: 16 }} onClick={() => router.push("/login")}>
-              Đến trang đăng nhập
+              {s.goToLogin}
             </button>
           </>
         )}
