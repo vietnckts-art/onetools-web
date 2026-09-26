@@ -24,6 +24,18 @@ const STR = {
     payError: "Không tải được form thanh toán. Vui lòng tải lại trang hoặc liên hệ hỗ trợ.",
     noPaddlePrice: "Gói này chưa hỗ trợ thanh toán quốc tế qua Paddle. Vui lòng liên hệ hỗ trợ.",
     perYear: "/ năm",
+    agreePrefix: "Tôi đồng ý với ",
+    agreeTerms: "Điều khoản sử dụng",
+    agreeMid1: ", ",
+    agreePrivacy: "Chính sách bảo mật",
+    agreeMid2: " và ",
+    agreeRefund: "Chính sách hoàn tiền",
+    agreeSuffix: " của OneTools.",
+    needAgree: "Vui lòng tích đồng ý điều khoản ở trên để tiếp tục thanh toán.",
+    needLogin:
+      "Cần đăng nhập trước khi thanh toán, để License được tự động gắn vào đúng tài khoản của bạn ngay sau khi mua.",
+    loginBtn: "Đăng nhập",
+    signupBtn: "Tạo tài khoản",
   },
   en: {
     back: "← Back to pricing",
@@ -42,6 +54,18 @@ const STR = {
     payError: "Couldn't load the payment form. Please reload the page or contact support.",
     noPaddlePrice: "This plan doesn't support Paddle payment yet. Please contact support.",
     perYear: "/ year",
+    agreePrefix: "I agree to OneTools' ",
+    agreeTerms: "Terms & Conditions",
+    agreeMid1: ", ",
+    agreePrivacy: "Privacy Policy",
+    agreeMid2: ", and ",
+    agreeRefund: "Refund Policy",
+    agreeSuffix: ".",
+    needAgree: "Please agree to the terms above to continue with payment.",
+    needLogin:
+      "You need to log in before paying, so your License is automatically attached to the right account right after purchase.",
+    loginBtn: "Log in",
+    signupBtn: "Create account",
   },
 };
 
@@ -55,6 +79,9 @@ export default function CheckoutClient({ plan, country }) {
   const [user, setUser] = useState(null);
   const [sessionChecked, setSessionChecked] = useState(false);
   const [error, setError] = useState("");
+  // Bắt buộc tick đồng ý Điều khoản/Chính sách trước khi được thanh toán — theo yêu cầu ghi ở
+  // OneToolsWebsite_progress_notes.md (Paddle hay soi khoản này khi review domain lên live).
+  const [agreed, setAgreed] = useState(false);
   const openedRef = useRef(false);
 
   useEffect(() => {
@@ -70,13 +97,17 @@ export default function CheckoutClient({ plan, country }) {
   // trong DOM, chỉ ẩn/hiện bằng CSS (xem className "hidden" bên dưới), nên form Paddle không bị mất khi
   // khách chuyển qua lại giữa 2 tab.
   useEffect(() => {
-    if (!plan?.paddle_price_id || !sessionChecked || openedRef.current) return;
+    if (!plan?.paddle_price_id || !sessionChecked || !user || !agreed || openedRef.current) return;
     openedRef.current = true;
     getPaddle()
       .then((paddle) => {
         paddle.Checkout.open({
           items: [{ priceId: plan.paddle_price_id, quantity: 1 }],
-          ...(user?.email ? { customer: { email: user.email } } : {}),
+          customer: { email: user.email },
+          // Gắn thẳng user_id vào transaction — webhook đọc lại đúng field này để biết cấp License cho
+          // tài khoản nào, KHÔNG cần dò theo email (tin cậy hơn, tránh sai nếu khách dùng email khác lúc
+          // thanh toán so với lúc đăng ký).
+          customData: { supabase_user_id: user.id },
           settings: {
             displayMode: "inline",
             theme: "dark",
@@ -92,7 +123,9 @@ export default function CheckoutClient({ plan, country }) {
         openedRef.current = false;
         setError(STR[lang].payError);
       });
-  }, [plan, user, sessionChecked, lang]);
+  }, [plan, user, sessionChecked, agreed, lang]);
+  // Chờ đủ 4 điều kiện: có price_id, đã biết trạng thái đăng nhập, ĐÃ đăng nhập, và đã tick đồng ý điều
+  // khoản — thiếu bất kỳ điều kiện nào cũng không mở Checkout (xem nhánh hiển thị tương ứng bên dưới).
 
   if (!mounted) return null;
   const s = STR[lang];
@@ -149,7 +182,26 @@ export default function CheckoutClient({ plan, country }) {
           <p className="checkout-sub" style={{ marginTop: 14 }}>
             {s.comingSoonMsg}
           </p>
-          <a href="mailto:support@onetools-bim.com" className="checkout-btn">
+          <label className="checkout-agree">
+            <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+            <span>
+              {s.agreePrefix}
+              <Link href="/terms" target="_blank">{s.agreeTerms}</Link>
+              {s.agreeMid1}
+              <Link href="/privacy-policy" target="_blank">{s.agreePrivacy}</Link>
+              {s.agreeMid2}
+              <Link href="/refund-policy" target="_blank">{s.agreeRefund}</Link>
+              {s.agreeSuffix}
+            </span>
+          </label>
+          <a
+            href="mailto:support@onetools-bim.com"
+            className="checkout-btn"
+            aria-disabled={!agreed}
+            onClick={(e) => {
+              if (!agreed) e.preventDefault();
+            }}
+          >
             {s.contactBtn}
           </a>
         </div>
@@ -157,10 +209,38 @@ export default function CheckoutClient({ plan, country }) {
         <div className={`checkout-card ${method === "paddle" ? "" : "is-hidden"}`}>
           <p className="checkout-sub">{s.intlNote}</p>
           {plan.paddle_price_id ? (
-            <>
-              <div className={PADDLE_FRAME_CLASS}></div>
-              {error && <p className="checkout-error">{error}</p>}
-            </>
+            !sessionChecked ? null : !user ? (
+              <div className="checkout-login-gate">
+                <p className="checkout-sub">{s.needLogin}</p>
+                <div className="checkout-login-actions">
+                  <Link href="/login" className="checkout-btn">{s.loginBtn}</Link>
+                  <Link href="/signup" className="checkout-btn primary">{s.signupBtn}</Link>
+                </div>
+              </div>
+            ) : !agreed ? (
+              <>
+                <label className="checkout-agree">
+                  <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+                  <span>
+                    {s.agreePrefix}
+                    <Link href="/terms" target="_blank">{s.agreeTerms}</Link>
+                    {s.agreeMid1}
+                    <Link href="/privacy-policy" target="_blank">{s.agreePrivacy}</Link>
+                    {s.agreeMid2}
+                    <Link href="/refund-policy" target="_blank">{s.agreeRefund}</Link>
+                    {s.agreeSuffix}
+                  </span>
+                </label>
+                <p className="checkout-sub" style={{ marginTop: 14, fontStyle: "italic" }}>
+                  {s.needAgree}
+                </p>
+              </>
+            ) : (
+              <>
+                <div className={PADDLE_FRAME_CLASS}></div>
+                {error && <p className="checkout-error">{error}</p>}
+              </>
+            )
           ) : (
             <p className="checkout-error">{s.noPaddlePrice}</p>
           )}
@@ -208,7 +288,15 @@ const checkoutCss = `
     font-family: 'Inter', -apple-system, sans-serif; margin-top: 6px;
   }
   .checkout-btn.primary { background: var(--accent); color: #292929; border-color: var(--accent); }
-  .checkout-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .checkout-btn:disabled, .checkout-btn[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
   .checkout-error { font-size: 13px; color: #E08080; margin-top: 14px; }
+  .checkout-agree {
+    display: flex; align-items: flex-start; gap: 9px; margin-top: 6px;
+    font-size: 12.5px; color: var(--text-dim); line-height: 1.5; cursor: pointer;
+  }
+  .checkout-agree input { margin-top: 3px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+  .checkout-agree a { color: var(--accent); text-decoration: underline; }
+  .checkout-login-actions { display: flex; gap: 10px; }
+  .checkout-login-actions .checkout-btn { margin-top: 0; }
   .${PADDLE_FRAME_CLASS} { min-height: 420px; }
 `;
