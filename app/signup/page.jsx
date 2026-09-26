@@ -38,13 +38,19 @@ const STR = {
   },
 };
 
-// Message lỗi từ server (Edge Function) luôn trả tiếng Việt cố định — dịch những message đã biết
-// khi người dùng đang chọn EN, message lạ thì giữ nguyên (còn hơn không hiển thị gì).
-function translateServerMessage(message, lang) {
+// Message lỗi từ server (Edge Function) luôn trả tiếng Việt cố định. Cách chắc chắn nhất là server
+// trả kèm 1 "code" cố định không đổi theo ngôn ngữ (xem ghi chú trong claude/WebAuthSync_progress_notes.md
+// — cần cập nhật Edge Function `sign-up` để thêm field này). Trong lúc chờ, vẫn fallback dò theo nội
+// dung tiếng Việt để không bị mất bản dịch.
+const ERROR_CODE_EN = {
+  EMAIL_ALREADY_EXISTS: "This email already has an account — please log in instead of signing up.",
+};
+
+function translateServerMessage(data, lang) {
+  const message = data?.message;
   if (lang !== "en" || !message) return message;
-  if (message.includes("đã có tài khoản")) {
-    return "This email already has an account — please log in instead of signing up.";
-  }
+  if (data?.code && ERROR_CODE_EN[data.code]) return ERROR_CODE_EN[data.code];
+  if (message.includes("đã có tài khoản")) return ERROR_CODE_EN.EMAIL_ALREADY_EXISTS;
   return message;
 }
 
@@ -81,7 +87,7 @@ export default function SignupPage() {
 
     if (!ok || data.status !== "ok") {
       setStatus("error");
-      setErrorMsg(translateServerMessage(data.message, lang) || s.errGeneric);
+      setErrorMsg(translateServerMessage(data, lang) || s.errGeneric);
       return;
     }
 

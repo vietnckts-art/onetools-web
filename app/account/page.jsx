@@ -69,14 +69,21 @@ const TYPE_LABEL = {
   dev_preview: "Dev Preview",
 };
 
-// Message lỗi từ server (Edge Function claim-license-key) luôn trả tiếng Việt cố định — dịch những
-// message đã biết khi người dùng đang chọn EN, message lạ thì giữ nguyên.
-function translateServerMessage(message, lang) {
+// Message lỗi từ server (Edge Function claim-license-key) luôn trả tiếng Việt cố định. Cách chắc chắn
+// nhất là server trả kèm 1 "code" cố định không đổi theo ngôn ngữ (cần cập nhật Edge Function
+// `claim-license-key`, xem claude/WebAuthSync_progress_notes.md). Trong lúc chờ, vẫn fallback dò theo
+// nội dung tiếng Việt để không bị mất bản dịch.
+const CLAIM_ERROR_CODE_EN = {
+  LICENSE_KEY_NOT_FOUND: "This License Key doesn't exist.",
+  LICENSE_KEY_TAKEN: "This License Key already belongs to another account.",
+};
+
+function translateServerMessage(data, lang) {
+  const message = data?.message;
   if (lang !== "en" || !message) return message;
-  if (message.includes("không tồn tại")) return "This License Key doesn't exist.";
-  if (message.includes("đã thuộc về một tài khoản khác")) {
-    return "This License Key already belongs to another account.";
-  }
+  if (data?.code && CLAIM_ERROR_CODE_EN[data.code]) return CLAIM_ERROR_CODE_EN[data.code];
+  if (message.includes("không tồn tại")) return CLAIM_ERROR_CODE_EN.LICENSE_KEY_NOT_FOUND;
+  if (message.includes("đã thuộc về một tài khoản khác")) return CLAIM_ERROR_CODE_EN.LICENSE_KEY_TAKEN;
   return message;
 }
 
@@ -193,7 +200,7 @@ export default function AccountPage() {
 
     if (!ok || data.status !== "ok") {
       setClaimStatus("error");
-      setClaimMsg(translateServerMessage(data.message, lang) || s.claimErrGeneric);
+      setClaimMsg(translateServerMessage(data, lang) || s.claimErrGeneric);
       return;
     }
 
