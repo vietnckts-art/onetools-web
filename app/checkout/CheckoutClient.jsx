@@ -79,6 +79,7 @@ export default function CheckoutClient({ plan, country }) {
           ...(user?.email ? { customer: { email: user.email } } : {}),
           settings: {
             displayMode: "inline",
+            theme: "dark",
             frameTarget: PADDLE_FRAME_CLASS,
             frameInitialHeight: 450,
             frameStyle: "width: 100%; min-width: 280px; background-color: transparent; border: none;",
