@@ -64,6 +64,7 @@ export default function LoginPage() {
   const [mode, setMode] = useState("login"); // login | forgot
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [status, setStatus] = useState("idle"); // idle | sending | sent | error
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -153,6 +154,15 @@ export default function LoginPage() {
           margin-bottom: 18px; box-sizing: border-box;
         }
         .login-input:focus { outline: none; border-color: var(--accent); }
+        .login-pw-wrap { position: relative; }
+        .login-pw-wrap .login-input { padding-right: 42px; }
+        .login-pw-toggle {
+          position: absolute; top: 0; right: 0; height: 45px; width: 40px;
+          background: none; border: none; padding: 0;
+          display: flex; align-items: center; justify-content: center;
+          color: var(--text-dim); cursor: pointer;
+        }
+        .login-pw-toggle:hover { color: var(--accent); }
         .login-btn {
           width: 100%; padding: 13px; background: var(--accent); color: var(--bg);
           border: none; font-family: 'JetBrains Mono', monospace; font-weight: 600;
@@ -193,15 +203,35 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
               />
               <label className="login-label" htmlFor="password">{s.password}</label>
-              <input
-                id="password"
-                type="password"
-                required
-                className="login-input"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+              <div className="login-pw-wrap">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  className="login-input"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="login-pw-toggle"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? (lang === "vi" ? "Ẩn mật khẩu" : "Hide password") : (lang === "vi" ? "Hiện mật khẩu" : "Show password")}
+                >
+                  {showPassword ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                      <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                  )}
+                </button>
+              </div>
               <button className="login-btn" type="submit" disabled={status === "sending"}>
                 {status === "sending" ? s.loginBtnBusy : s.loginBtn}
               </button>

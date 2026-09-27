@@ -54,12 +54,28 @@ function translateServerMessage(data, lang) {
   return message;
 }
 
+function EyeIcon({ visible }) {
+  return visible ? (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+      <line x1="1" y1="1" x2="23" y2="23"></line>
+    </svg>
+  ) : (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+      <circle cx="12" cy="12" r="3"></circle>
+    </svg>
+  );
+}
+
 export default function SignupPage() {
   const router = useRouter();
   const { lang, setLang, mounted } = useLang();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [status, setStatus] = useState("idle"); // idle | sending | error
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -147,6 +163,15 @@ export default function SignupPage() {
           margin-bottom: 18px; box-sizing: border-box;
         }
         .signup-input:focus { outline: none; border-color: var(--accent); }
+        .signup-pw-wrap { position: relative; }
+        .signup-pw-wrap .signup-input { padding-right: 42px; }
+        .signup-pw-toggle {
+          position: absolute; top: 0; right: 0; height: 45px; width: 40px;
+          background: none; border: none; padding: 0;
+          display: flex; align-items: center; justify-content: center;
+          color: var(--text-dim); cursor: pointer;
+        }
+        .signup-pw-toggle:hover { color: var(--accent); }
         .signup-btn {
           width: 100%; padding: 13px; background: var(--accent); color: var(--bg);
           border: none; font-family: 'JetBrains Mono', monospace; font-weight: 600;
@@ -178,25 +203,45 @@ export default function SignupPage() {
             onChange={(e) => setEmail(e.target.value)}
           />
           <label className="signup-label" htmlFor="password">{s.password}</label>
-          <input
-            id="password"
-            type="password"
-            required
-            className="signup-input"
-            placeholder={s.passwordPlaceholder}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          <div className="signup-pw-wrap">
+            <input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              required
+              className="signup-input"
+              placeholder={s.passwordPlaceholder}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button
+              type="button"
+              className="signup-pw-toggle"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? (lang === "vi" ? "Ẩn mật khẩu" : "Hide password") : (lang === "vi" ? "Hiện mật khẩu" : "Show password")}
+            >
+              <EyeIcon visible={showPassword} />
+            </button>
+          </div>
           <label className="signup-label" htmlFor="confirm-password">{s.confirmPassword}</label>
-          <input
-            id="confirm-password"
-            type="password"
-            required
-            className="signup-input"
-            placeholder="••••••••"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-          />
+          <div className="signup-pw-wrap">
+            <input
+              id="confirm-password"
+              type={showConfirmPassword ? "text" : "password"}
+              required
+              className="signup-input"
+              placeholder="••••••••"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+            />
+            <button
+              type="button"
+              className="signup-pw-toggle"
+              onClick={() => setShowConfirmPassword((v) => !v)}
+              aria-label={showConfirmPassword ? (lang === "vi" ? "Ẩn mật khẩu" : "Hide password") : (lang === "vi" ? "Hiện mật khẩu" : "Show password")}
+            >
+              <EyeIcon visible={showConfirmPassword} />
+            </button>
+          </div>
           <button className="signup-btn" type="submit" disabled={status === "sending"}>
             {status === "sending" ? s.submitBtnBusy : s.submitBtn}
           </button>
