@@ -475,6 +475,7 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
           font-size: 12px;
           color: var(--text-dim);
           max-width: 140px;
+          min-width: 0;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -985,7 +986,8 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
 
         @media (max-width: 860px) {
           .nav-links-desktop,
-          .nav-cta-desktop {
+          .nav-cta-desktop,
+          .nav-user-email {
             display: none;
           }
           .nav-burger { display: flex; }
