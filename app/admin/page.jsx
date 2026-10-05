@@ -437,6 +437,13 @@ function ReleasesManager() {
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState("");
 
+  // Sửa bản đã đăng: chỉnh lại thông tin (và có thể thay file cài đặt nếu cần) mà không phải xoá/đăng lại.
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState(EMPTY_RELEASE);
+  const [editFile, setEditFile] = useState(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editMsg, setEditMsg] = useState("");
+
   const load = useCallback(async () => {
     setLoading(true);
     const { data } = await supabase.from("releases").select("*").order("published_at", { ascending: false });
@@ -511,6 +518,70 @@ function ReleasesManager() {
     load();
   };
 
+  const startEdit = (row) => {
+    setEditingId(row.id);
+    setEditForm({
+      version: row.version || "",
+      revit_versions: row.revit_versions || "",
+      release_notes_vi: row.release_notes_vi || "",
+      release_notes_en: row.release_notes_en || "",
+      is_latest: row.is_latest,
+    });
+    setEditFile(null);
+    setEditMsg("");
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditForm(EMPTY_RELEASE);
+    setEditFile(null);
+    setEditMsg("");
+  };
+
+  const saveEdit = async () => {
+    if (!editForm.version.trim()) {
+      setEditMsg("Cần nhập số phiên bản (vd 1.5.0).");
+      return;
+    }
+
+    setEditSaving(true);
+    setEditMsg("");
+
+    try {
+      const payload = {
+        version: editForm.version.trim(),
+        revit_versions: editForm.revit_versions,
+        release_notes_vi: editForm.release_notes_vi,
+        release_notes_en: editForm.release_notes_en,
+        is_latest: editForm.is_latest,
+      };
+
+      // Chỉ thay file cài đặt trong Storage nếu admin có chọn file mới — để trống thì giữ nguyên file cũ.
+      if (editFile) {
+        const path = `OneToolsSetup_v${editForm.version.trim()}_${Date.now()}.exe`;
+        const { error: uploadError } = await supabase.storage
+          .from("installers")
+          .upload(path, editFile, { upsert: false });
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = supabase.storage.from("installers").getPublicUrl(path);
+        payload.download_url = publicUrlData.publicUrl;
+        payload.file_name = editFile.name;
+        payload.file_size_mb = Number((editFile.size / (1024 * 1024)).toFixed(1));
+      }
+
+      const { error: updateError } = await supabase.from("releases").update(payload).eq("id", editingId);
+      if (updateError) throw updateError;
+
+      cancelEdit();
+      load();
+    } catch (err) {
+      setEditMsg("Lỗi: " + err.message);
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   return (
     <div>
       <div className="admin-form">
@@ -553,6 +624,69 @@ function ReleasesManager() {
         {uploadMsg && <p style={{ fontSize: 13, marginTop: 10, color: "#C9A15F" }}>{uploadMsg}</p>}
       </div>
 
+      {editingId && (
+        <div className="admin-form">
+          <h3 style={{ marginTop: 0 }}>
+            Sửa bản {rows.find((r) => r.id === editingId)?.version}
+          </h3>
+          <div className="form-row">
+            <label>File hiện tại</label>
+            <p style={{ margin: 0, fontSize: 13, color: "#A79E8C" }} className="mono">
+              {rows.find((r) => r.id === editingId)?.file_name}
+            </p>
+          </div>
+          <div className="form-row">
+            <label>Thay file cài đặt mới (.exe) — để trống nếu chỉ sửa thông tin bên dưới</label>
+            <input type="file" accept=".exe" onChange={(e) => setEditFile(e.target.files[0])} />
+          </div>
+          <div className="form-row">
+            <label>Số phiên bản (vd 1.5.0)</label>
+            <input
+              value={editForm.version}
+              onChange={(e) => setEditForm({ ...editForm, version: e.target.value })}
+            />
+          </div>
+          <div className="form-row">
+            <label>Phiên bản Revit hỗ trợ</label>
+            <input
+              value={editForm.revit_versions}
+              onChange={(e) => setEditForm({ ...editForm, revit_versions: e.target.value })}
+            />
+          </div>
+          <div className="form-row">
+            <label>Changelog (Tiếng Việt)</label>
+            <textarea
+              value={editForm.release_notes_vi}
+              onChange={(e) => setEditForm({ ...editForm, release_notes_vi: e.target.value })}
+            />
+          </div>
+          <div className="form-row">
+            <label>Changelog (English)</label>
+            <textarea
+              value={editForm.release_notes_en}
+              onChange={(e) => setEditForm({ ...editForm, release_notes_en: e.target.value })}
+            />
+          </div>
+          <div className="form-row checkbox">
+            <label>
+              <input
+                type="checkbox"
+                checked={editForm.is_latest}
+                onChange={(e) => setEditForm({ ...editForm, is_latest: e.target.checked })}
+              />
+              Đặt làm bản mới nhất (nút "Tải về" trên web sẽ trỏ tới bản này)
+            </label>
+          </div>
+          <div className="form-actions">
+            <button className="btn-primary" onClick={saveEdit} disabled={editSaving}>
+              {editSaving ? "Đang lưu..." : "Lưu thay đổi"}
+            </button>
+            <button className="btn-ghost" onClick={cancelEdit}>Huỷ</button>
+          </div>
+          {editMsg && <p style={{ fontSize: 13, marginTop: 10, color: "#E08080" }}>{editMsg}</p>}
+        </div>
+      )}
+
       {loading ? (
         <p>Đang tải...</p>
       ) : (
@@ -571,6 +705,7 @@ function ReleasesManager() {
                 <td>{r.is_latest ? "✓" : "—"}</td>
                 <td>{new Date(r.published_at).toLocaleDateString("vi-VN")}</td>
                 <td className="actions">
+                  <button onClick={() => startEdit(r)}>Sửa</button>
                   {!r.is_latest && <button onClick={() => markLatest(r.id)}>Đặt làm mới nhất</button>}
                   <button className="danger" onClick={() => remove(r)}>Xoá</button>
                 </td>
