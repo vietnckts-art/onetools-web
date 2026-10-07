@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
@@ -8,6 +8,7 @@ import { useLang } from "../../lib/useLang";
 
 const STR = {
   vi: {
+    backHome: "← Trang chủ",
     loginTitle: "Đăng nhập OneTools",
     loginSub: "Nhập email và mật khẩu đã đăng ký license.",
     email: "Email",
@@ -29,6 +30,7 @@ const STR = {
     errNotConfirmed: "Email chưa được xác nhận. Vui lòng liên hệ support@onetools-bim.com.",
   },
   en: {
+    backHome: "← Home",
     loginTitle: "Log in to OneTools",
     loginSub: "Enter the email and password you registered your license with.",
     email: "Email",
@@ -67,9 +69,20 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [status, setStatus] = useState("idle"); // idle | sending | sent | error
   const [errorMsg, setErrorMsg] = useState("");
+  // ?redirect=... — khi khách bấm mua gói lúc chưa đăng nhập, /checkout chuyển sang đây kèm query này để
+  // sau khi đăng nhập xong tự quay lại đúng trang thanh toán đang dang dở, thay vì mặc định về /account.
+  // Đọc qua window.location.search trong useEffect (thay vì useSearchParams) để tránh Next.js bắt buộc
+  // bọc Suspense cho trang này.
+  const [redirectTo, setRedirectTo] = useState("");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setRedirectTo(new URLSearchParams(window.location.search).get("redirect") || "");
+  }, []);
 
   if (!mounted) return null;
   const s = STR[lang];
+  const signupHref = redirectTo ? `/signup?redirect=${encodeURIComponent(redirectTo)}` : "/signup";
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -84,7 +97,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/account");
+    router.push(redirectTo || "/account");
   };
 
   const handleForgotPassword = async (e) => {
@@ -123,6 +136,11 @@ export default function LoginPage() {
           display: flex; align-items: center; justify-content: center;
           padding: 24px; position: relative;
         }
+        .login-home {
+          position: absolute; top: 24px; left: 20px;
+          color: var(--text-dim); text-decoration: none; font-size: 13px;
+        }
+        .login-home:hover { color: var(--accent); }
         .login-lang {
           position: absolute; top: 20px; right: 20px;
           display: inline-flex; border: 1px solid var(--line); font-size: 12px;
@@ -182,6 +200,7 @@ export default function LoginPage() {
         }
         .login-links a:hover, .login-links button.linklike:hover { color: var(--accent); }
       `}</style>
+      <Link href="/" className="login-home">{s.backHome}</Link>
       <div className="login-lang">
         <button className={lang === "vi" ? "active" : ""} onClick={() => setLang("vi")}>VI</button>
         <button className={lang === "en" ? "active" : ""} onClick={() => setLang("en")}>EN</button>
@@ -241,7 +260,7 @@ export default function LoginPage() {
               <button type="button" className="linklike" onClick={() => switchMode("forgot")}>
                 {s.forgot}
               </button>
-              <Link href="/signup">{s.noAccount}</Link>
+              <Link href={signupHref}>{s.noAccount}</Link>
             </div>
           </>
         ) : (

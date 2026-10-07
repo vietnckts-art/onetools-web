@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { usePayOS } from "@payos/payos-checkout";
 import { supabase } from "../../lib/supabaseClient";
 import { getPaddle } from "../../lib/paddleClient";
 import { useLang } from "../../lib/useLang";
@@ -72,7 +74,12 @@ const STR = {
 // displayMode: "inline" — xem developer.paddle.com/paddle-js/methods/paddle-checkout-open.
 const PADDLE_FRAME_CLASS = "paddle-checkout-frame";
 
+// id của div dùng để nhúng giao diện thanh toán PayOS (thư viện @payos/payos-checkout tự tìm theo
+// đúng id này — xem payos.vn/docs/checkout/quick-start-payos-embedded-form, mục "React").
+const PAYOS_ELEMENT_ID = "payos-checkout-embed";
+
 export default function CheckoutClient({ plan, country }) {
+  const router = useRouter();
   const { lang, mounted } = useLang();
   const [method, setMethod] = useState(country === "VN" ? "payos" : "paddle");
   const [user, setUser] = useState(null);
@@ -84,6 +91,33 @@ export default function CheckoutClient({ plan, country }) {
   const [payosLoading, setPayosLoading] = useState(false);
   const [payosError, setPayosError] = useState("");
   const openedRef = useRef(false);
+  const payosOpenedRef = useRef(false);
+
+  // Config cho hook usePayOS (thư viện chính thức của PayOS để NHÚNG giao diện thanh toán ngay trong
+  // trang, thay vì chuyển hẳn khách sang pay.payos.vn ở tab khác — theo yêu cầu user 2026-10-07).
+  // CHECKOUT_URL để rỗng lúc đầu — chỉ có giá trị sau khi gọi xong payos-create-payment; hook sẽ tự
+  // không làm gì nếu CHECKOUT_URL rỗng, ta tự gọi open() trong useEffect bên dưới khi có giá trị.
+  const [payOSConfig, setPayOSConfig] = useState(() => ({
+    RETURN_URL: typeof window !== "undefined" ? `${window.location.origin}/welcome` : "",
+    ELEMENT_ID: PAYOS_ELEMENT_ID,
+    CHECKOUT_URL: "",
+    embedded: true,
+    onSuccess: () => {
+      // Thanh toán thành công — đóng khung nhúng rồi chuyển sang trang cảm ơn. Việc cấp License tự
+      // động vẫn do webhook `payos-webhook` xử lý ở backend (độc lập, không phụ thuộc sự kiện này).
+      exit();
+      router.push("/welcome");
+    },
+    onCancel: () => {
+      payosOpenedRef.current = false;
+      setPayOSConfig((prev) => ({ ...prev, CHECKOUT_URL: "" }));
+    },
+    onExit: () => {
+      payosOpenedRef.current = false;
+      setPayOSConfig((prev) => ({ ...prev, CHECKOUT_URL: "" }));
+    },
+  }));
+  const { open, exit } = usePayOS(payOSConfig);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -92,9 +126,9 @@ export default function CheckoutClient({ plan, country }) {
     });
   }, []);
 
-  // Gọi Edge Function `payos-create-payment` để PayOS tạo link thanh toán (QR/chuyển khoản), rồi
-  // chuyển hẳn sang trang đó (KHÔNG nhúng inline như Paddle — PayOS hosted page tự xử lý toàn bộ UI
-  // nhập thông tin/chuyển khoản, đơn giản hơn tự dựng form).
+  // Gọi Edge Function `payos-create-payment` để PayOS tạo link thanh toán (QR/chuyển khoản), rồi NHÚNG
+  // thẳng giao diện đó vào khối #payos-checkout-embed ngay trong trang này (giống cách Paddle nhúng
+  // inline bên dưới) — KHÔNG chuyển hẳn khách sang tab/domain khác nữa.
   const startPayos = async () => {
     setPayosLoading(true);
     setPayosError("");
@@ -102,12 +136,22 @@ export default function CheckoutClient({ plan, country }) {
     const accessToken = sessionData.session?.access_token;
     const { ok, data } = await callEdgeFunction("payos-create-payment", { planId: plan.id }, accessToken);
     if (ok && data?.checkoutUrl) {
-      window.location.href = data.checkoutUrl;
+      setPayOSConfig((prev) => ({ ...prev, CHECKOUT_URL: data.checkoutUrl }));
+      setPayosLoading(false);
       return;
     }
     setPayosError(data?.error || s.payosGenericError);
     setPayosLoading(false);
   };
+
+  // Chỉ mở đúng 1 lần cho mỗi link thanh toán mới (payosOpenedRef) — tránh gọi open() lặp lại mỗi lần
+  // component re-render trong lúc khung nhúng đang hiện.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!payOSConfig.CHECKOUT_URL || payosOpenedRef.current) return;
+    payosOpenedRef.current = true;
+    open();
+  }, [payOSConfig.CHECKOUT_URL]);
 
   // Nhúng thẳng form Paddle Checkout (displayMode "inline") vào khối .paddle-checkout-frame ngay trong
   // trang này — KHÔNG mở popup/overlay riêng nữa. Chờ đã biết trạng thái đăng nhập (sessionChecked) để
@@ -165,6 +209,12 @@ export default function CheckoutClient({ plan, country }) {
 
   const name = lang === "vi" ? plan.name_vi : plan.name_en;
   const vndPrice = plan.price;
+  // Quay lại đúng trang checkout này sau khi đăng nhập/đăng ký xong — gắn kèm query ?redirect= vào link
+  // Đăng nhập/Tạo tài khoản bên dưới, cả 2 trang /login và /signup đều tự đọc lại param này để điều
+  // hướng về đây thay vì mặc định /account (yêu cầu user 2026-10-07).
+  const checkoutSelfUrl = `/checkout?id=${plan.id}`;
+  const loginHref = `/login?redirect=${encodeURIComponent(checkoutSelfUrl)}`;
+  const signupHref = `/signup?redirect=${encodeURIComponent(checkoutSelfUrl)}`;
 
   return (
     <div className="checkout-root">
@@ -192,7 +242,8 @@ export default function CheckoutClient({ plan, country }) {
           </button>
         </div>
 
-        {/* 2 khối luôn nằm trong DOM, chỉ ẩn/hiện bằng CSS — giữ nguyên form Paddle đã nhúng khi đổi tab */}
+        {/* 2 khối luôn nằm trong DOM, chỉ ẩn/hiện bằng CSS — giữ nguyên form Paddle/PayOS đã nhúng khi
+            đổi tab */}
         <div className={`checkout-card ${method === "payos" ? "" : "is-hidden"}`}>
           <p className="checkout-sub">{s.domesticNote}</p>
           <div className="checkout-price-big mono">{vndPrice ? `₫${vndPrice}` : "—"}</div>
@@ -201,8 +252,8 @@ export default function CheckoutClient({ plan, country }) {
             <div className="checkout-login-gate">
               <p className="checkout-sub">{s.needLogin}</p>
               <div className="checkout-login-actions">
-                <Link href="/login" className="checkout-btn">{s.loginBtn}</Link>
-                <Link href="/signup" className="checkout-btn primary">{s.signupBtn}</Link>
+                <Link href={loginHref} className="checkout-btn">{s.loginBtn}</Link>
+                <Link href={signupHref} className="checkout-btn primary">{s.signupBtn}</Link>
               </div>
             </div>
           ) : (
@@ -223,7 +274,7 @@ export default function CheckoutClient({ plan, country }) {
                 <p className="checkout-sub" style={{ marginTop: 14, fontStyle: "italic" }}>
                   {s.needAgree}
                 </p>
-              ) : (
+              ) : !payOSConfig.CHECKOUT_URL ? (
                 <>
                   <button
                     type="button"
@@ -236,6 +287,8 @@ export default function CheckoutClient({ plan, country }) {
                   </button>
                   {payosError && <p className="checkout-error">{payosError}</p>}
                 </>
+              ) : (
+                <div id={PAYOS_ELEMENT_ID} className="payos-checkout-frame"></div>
               )}
             </>
           )}
@@ -248,8 +301,8 @@ export default function CheckoutClient({ plan, country }) {
               <div className="checkout-login-gate">
                 <p className="checkout-sub">{s.needLogin}</p>
                 <div className="checkout-login-actions">
-                  <Link href="/login" className="checkout-btn">{s.loginBtn}</Link>
-                  <Link href="/signup" className="checkout-btn primary">{s.signupBtn}</Link>
+                  <Link href={loginHref} className="checkout-btn">{s.loginBtn}</Link>
+                  <Link href={signupHref} className="checkout-btn primary">{s.signupBtn}</Link>
                 </div>
               </div>
             ) : !agreed ? (
@@ -334,4 +387,5 @@ const checkoutCss = `
   .checkout-login-actions { display: flex; gap: 10px; }
   .checkout-login-actions .checkout-btn { margin-top: 0; }
   .${PADDLE_FRAME_CLASS} { min-height: 420px; }
+  #${PAYOS_ELEMENT_ID} { min-height: 420px; margin-top: 14px; }
 `;

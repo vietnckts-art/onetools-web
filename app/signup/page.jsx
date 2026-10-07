@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
@@ -9,6 +9,7 @@ import { useLang } from "../../lib/useLang";
 
 const STR = {
   vi: {
+    backHome: "← Trang chủ",
     title: "Đăng ký OneTools",
     sub: "Tạo tài khoản để dùng thử miễn phí 15 ngày, hoặc kích hoạt license đã mua.",
     email: "Email",
@@ -23,6 +24,7 @@ const STR = {
     errGeneric: "Đăng ký thất bại, vui lòng thử lại.",
   },
   en: {
+    backHome: "← Home",
     title: "Sign up for OneTools",
     sub: "Create an account to start a 15-day free trial, or activate a license you've purchased.",
     email: "Email",
@@ -78,9 +80,18 @@ export default function SignupPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [status, setStatus] = useState("idle"); // idle | sending | error
   const [errorMsg, setErrorMsg] = useState("");
+  // ?redirect=... — xem ghi chú tương tự ở app/login/page.jsx: giữ lại đường quay về /checkout đang dang
+  // dở (nếu có) để tự chuyển khách về đúng đó sau khi tạo tài khoản xong, thay vì mặc định về /account.
+  const [redirectTo, setRedirectTo] = useState("");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setRedirectTo(new URLSearchParams(window.location.search).get("redirect") || "");
+  }, []);
 
   if (!mounted) return null;
   const s = STR[lang];
+  const loginHref = redirectTo ? `/login?redirect=${encodeURIComponent(redirectTo)}` : "/login";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -113,11 +124,11 @@ export default function SignupPage() {
     });
 
     if (sessionError) {
-      router.push("/login");
+      router.push(loginHref);
       return;
     }
 
-    router.push("/account");
+    router.push(redirectTo || "/account");
   };
 
   return (
@@ -132,6 +143,11 @@ export default function SignupPage() {
           display: flex; align-items: center; justify-content: center;
           padding: 24px; position: relative;
         }
+        .signup-home {
+          position: absolute; top: 24px; left: 20px;
+          color: var(--text-dim); text-decoration: none; font-size: 13px;
+        }
+        .signup-home:hover { color: var(--accent); }
         .signup-lang {
           position: absolute; top: 20px; right: 20px;
           display: inline-flex; border: 1px solid var(--line); font-size: 12px;
@@ -184,6 +200,7 @@ export default function SignupPage() {
         .signup-links a { color: var(--text-dim); text-decoration: none; }
         .signup-links a:hover { color: var(--accent); }
       `}</style>
+      <Link href="/" className="signup-home">{s.backHome}</Link>
       <div className="signup-lang">
         <button className={lang === "vi" ? "active" : ""} onClick={() => setLang("vi")}>VI</button>
         <button className={lang === "en" ? "active" : ""} onClick={() => setLang("en")}>EN</button>
@@ -248,7 +265,7 @@ export default function SignupPage() {
           {status === "error" && <p className="signup-msg error">{errorMsg}</p>}
         </form>
         <div className="signup-links">
-          <Link href="/login">{s.haveAccount}</Link>
+          <Link href={loginHref}>{s.haveAccount}</Link>
         </div>
       </div>
     </div>
