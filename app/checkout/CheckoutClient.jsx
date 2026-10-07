@@ -387,5 +387,15 @@ const checkoutCss = `
   .checkout-login-actions { display: flex; gap: 10px; }
   .checkout-login-actions .checkout-btn { margin-top: 0; }
   .${PADDLE_FRAME_CLASS} { min-height: 420px; }
-  #${PAYOS_ELEMENT_ID} { min-height: 420px; margin-top: 14px; }
+  /* Thư viện @payos/payos-checkout tự chèn 1 iframe bên trong div này — mặc định iframe đó quá thấp
+     (co cụm lại, phải cuộn) nên ép cứng width/height bằng !important để hiện đủ nội dung (QR + tab
+     Chuyển khoản), không cho JS của PayOS tự set lại kích thước nhỏ hơn. */
+  #${PAYOS_ELEMENT_ID} { min-height: 620px; margin-top: 14px; }
+  #${PAYOS_ELEMENT_ID} iframe {
+    width: 100% !important;
+    height: 620px !important;
+    min-height: 620px !important;
+    border: none !important;
+    display: block !important;
+  }
 `;
