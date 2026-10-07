@@ -2,8 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { usePayOS } from "@payos/payos-checkout";
 import { supabase } from "../../lib/supabaseClient";
 import { getPaddle } from "../../lib/paddleClient";
 import { useLang } from "../../lib/useLang";
@@ -74,12 +72,7 @@ const STR = {
 // displayMode: "inline" — xem developer.paddle.com/paddle-js/methods/paddle-checkout-open.
 const PADDLE_FRAME_CLASS = "paddle-checkout-frame";
 
-// id của div dùng để nhúng giao diện thanh toán PayOS (thư viện @payos/payos-checkout tự tìm theo
-// đúng id này — xem payos.vn/docs/checkout/quick-start-payos-embedded-form, mục "React").
-const PAYOS_ELEMENT_ID = "payos-checkout-embed";
-
 export default function CheckoutClient({ plan, country }) {
-  const router = useRouter();
   const { lang, mounted } = useLang();
   const [method, setMethod] = useState(country === "VN" ? "payos" : "paddle");
   const [user, setUser] = useState(null);
@@ -91,33 +84,6 @@ export default function CheckoutClient({ plan, country }) {
   const [payosLoading, setPayosLoading] = useState(false);
   const [payosError, setPayosError] = useState("");
   const openedRef = useRef(false);
-  const payosOpenedRef = useRef(false);
-
-  // Config cho hook usePayOS (thư viện chính thức của PayOS để NHÚNG giao diện thanh toán ngay trong
-  // trang, thay vì chuyển hẳn khách sang pay.payos.vn ở tab khác — theo yêu cầu user 2026-10-07).
-  // CHECKOUT_URL để rỗng lúc đầu — chỉ có giá trị sau khi gọi xong payos-create-payment; hook sẽ tự
-  // không làm gì nếu CHECKOUT_URL rỗng, ta tự gọi open() trong useEffect bên dưới khi có giá trị.
-  const [payOSConfig, setPayOSConfig] = useState(() => ({
-    RETURN_URL: typeof window !== "undefined" ? `${window.location.origin}/welcome` : "",
-    ELEMENT_ID: PAYOS_ELEMENT_ID,
-    CHECKOUT_URL: "",
-    embedded: true,
-    onSuccess: () => {
-      // Thanh toán thành công — đóng khung nhúng rồi chuyển sang trang cảm ơn. Việc cấp License tự
-      // động vẫn do webhook `payos-webhook` xử lý ở backend (độc lập, không phụ thuộc sự kiện này).
-      exit();
-      router.push("/welcome");
-    },
-    onCancel: () => {
-      payosOpenedRef.current = false;
-      setPayOSConfig((prev) => ({ ...prev, CHECKOUT_URL: "" }));
-    },
-    onExit: () => {
-      payosOpenedRef.current = false;
-      setPayOSConfig((prev) => ({ ...prev, CHECKOUT_URL: "" }));
-    },
-  }));
-  const { open, exit } = usePayOS(payOSConfig);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -126,9 +92,11 @@ export default function CheckoutClient({ plan, country }) {
     });
   }, []);
 
-  // Gọi Edge Function `payos-create-payment` để PayOS tạo link thanh toán (QR/chuyển khoản), rồi NHÚNG
-  // thẳng giao diện đó vào khối #payos-checkout-embed ngay trong trang này (giống cách Paddle nhúng
-  // inline bên dưới) — KHÔNG chuyển hẳn khách sang tab/domain khác nữa.
+  // Gọi Edge Function `payos-create-payment` để PayOS tạo link thanh toán (QR/chuyển khoản), rồi chuyển
+  // hẳn sang trang đó (ĐÃ THỬ nhúng inline bằng @payos/payos-checkout ngày 2026-10-07 nhưng khung nhúng
+  // quá nhỏ/khó nhìn dù đã ép CSS, user yêu cầu quay lại cách chuyển hẳn trang như ban đầu — đơn giản hơn,
+  // PayOS hosted page tự xử lý toàn bộ UI nhập thông tin/chuyển khoản, không phụ thuộc cách thư viện
+  // nhúng tự set kích thước iframe).
   const startPayos = async () => {
     setPayosLoading(true);
     setPayosError("");
@@ -136,22 +104,12 @@ export default function CheckoutClient({ plan, country }) {
     const accessToken = sessionData.session?.access_token;
     const { ok, data } = await callEdgeFunction("payos-create-payment", { planId: plan.id }, accessToken);
     if (ok && data?.checkoutUrl) {
-      setPayOSConfig((prev) => ({ ...prev, CHECKOUT_URL: data.checkoutUrl }));
-      setPayosLoading(false);
+      window.location.href = data.checkoutUrl;
       return;
     }
     setPayosError(data?.error || s.payosGenericError);
     setPayosLoading(false);
   };
-
-  // Chỉ mở đúng 1 lần cho mỗi link thanh toán mới (payosOpenedRef) — tránh gọi open() lặp lại mỗi lần
-  // component re-render trong lúc khung nhúng đang hiện.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (!payOSConfig.CHECKOUT_URL || payosOpenedRef.current) return;
-    payosOpenedRef.current = true;
-    open();
-  }, [payOSConfig.CHECKOUT_URL]);
 
   // Nhúng thẳng form Paddle Checkout (displayMode "inline") vào khối .paddle-checkout-frame ngay trong
   // trang này — KHÔNG mở popup/overlay riêng nữa. Chờ đã biết trạng thái đăng nhập (sessionChecked) để
@@ -242,8 +200,7 @@ export default function CheckoutClient({ plan, country }) {
           </button>
         </div>
 
-        {/* 2 khối luôn nằm trong DOM, chỉ ẩn/hiện bằng CSS — giữ nguyên form Paddle/PayOS đã nhúng khi
-            đổi tab */}
+        {/* 2 khối luôn nằm trong DOM, chỉ ẩn/hiện bằng CSS — giữ nguyên form Paddle đã nhúng khi đổi tab */}
         <div className={`checkout-card ${method === "payos" ? "" : "is-hidden"}`}>
           <p className="checkout-sub">{s.domesticNote}</p>
           <div className="checkout-price-big mono">{vndPrice ? `₫${vndPrice}` : "—"}</div>
@@ -274,7 +231,7 @@ export default function CheckoutClient({ plan, country }) {
                 <p className="checkout-sub" style={{ marginTop: 14, fontStyle: "italic" }}>
                   {s.needAgree}
                 </p>
-              ) : !payOSConfig.CHECKOUT_URL ? (
+              ) : (
                 <>
                   <button
                     type="button"
@@ -287,8 +244,6 @@ export default function CheckoutClient({ plan, country }) {
                   </button>
                   {payosError && <p className="checkout-error">{payosError}</p>}
                 </>
-              ) : (
-                <div id={PAYOS_ELEMENT_ID} className="payos-checkout-frame"></div>
               )}
             </>
           )}
@@ -387,15 +342,4 @@ const checkoutCss = `
   .checkout-login-actions { display: flex; gap: 10px; }
   .checkout-login-actions .checkout-btn { margin-top: 0; }
   .${PADDLE_FRAME_CLASS} { min-height: 420px; }
-  /* Thư viện @payos/payos-checkout tự chèn 1 iframe bên trong div này — mặc định iframe đó quá thấp
-     (co cụm lại, phải cuộn) nên ép cứng width/height bằng !important để hiện đủ nội dung (QR + tab
-     Chuyển khoản), không cho JS của PayOS tự set lại kích thước nhỏ hơn. */
-  #${PAYOS_ELEMENT_ID} { min-height: 620px; margin-top: 14px; }
-  #${PAYOS_ELEMENT_ID} iframe {
-    width: 100% !important;
-    height: 620px !important;
-    min-height: 620px !important;
-    border: none !important;
-    display: block !important;
-  }
 `;
