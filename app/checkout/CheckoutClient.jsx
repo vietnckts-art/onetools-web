@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "../../lib/supabaseClient";
 import { getPaddle } from "../../lib/paddleClient";
@@ -21,7 +21,9 @@ const STR = {
     payBtn: "Thanh toán qua PayOS",
     payLoading: "Đang tạo link thanh toán...",
     payosGenericError: "Không tạo được link thanh toán. Vui lòng thử lại hoặc liên hệ hỗ trợ.",
-    payError: "Không tải được form thanh toán. Vui lòng tải lại trang hoặc liên hệ hỗ trợ.",
+    payBtnPaddle: "Thanh toán qua Paddle",
+    payLoadingPaddle: "Đang mở Paddle Checkout...",
+    payError: "Không mở được form thanh toán. Vui lòng thử lại hoặc liên hệ hỗ trợ.",
     noPaddlePrice: "Gói này chưa hỗ trợ thanh toán quốc tế qua Paddle. Vui lòng liên hệ hỗ trợ.",
     perYear: "/ năm",
     agreePrefix: "Tôi đồng ý với ",
@@ -50,7 +52,9 @@ const STR = {
     payBtn: "Pay with PayOS",
     payLoading: "Creating payment link...",
     payosGenericError: "Couldn't create a payment link. Please try again or contact support.",
-    payError: "Couldn't load the payment form. Please reload the page or contact support.",
+    payBtnPaddle: "Pay with Paddle",
+    payLoadingPaddle: "Opening Paddle Checkout...",
+    payError: "Couldn't open the payment form. Please try again or contact support.",
     noPaddlePrice: "This plan doesn't support Paddle payment yet. Please contact support.",
     perYear: "/ year",
     agreePrefix: "I agree to OneTools' ",
@@ -68,10 +72,6 @@ const STR = {
   },
 };
 
-// Class name (KHÔNG phải id) mà Paddle.js dùng để tìm đúng chỗ nhúng iframe khi
-// displayMode: "inline" — xem developer.paddle.com/paddle-js/methods/paddle-checkout-open.
-const PADDLE_FRAME_CLASS = "paddle-checkout-frame";
-
 export default function CheckoutClient({ plan, country }) {
   const { lang, mounted } = useLang();
   const [method, setMethod] = useState(country === "VN" ? "payos" : "paddle");
@@ -83,7 +83,7 @@ export default function CheckoutClient({ plan, country }) {
   const [agreed, setAgreed] = useState(false);
   const [payosLoading, setPayosLoading] = useState(false);
   const [payosError, setPayosError] = useState("");
-  const openedRef = useRef(false);
+  const [paddleLoading, setPaddleLoading] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -111,41 +111,34 @@ export default function CheckoutClient({ plan, country }) {
     setPayosLoading(false);
   };
 
-  // Nhúng thẳng form Paddle Checkout (displayMode "inline") vào khối .paddle-checkout-frame ngay trong
-  // trang này — KHÔNG mở popup/overlay riêng nữa. Chờ đã biết trạng thái đăng nhập (sessionChecked) để
-  // prefill đúng email nếu có, và chỉ mở đúng 1 lần (openedRef) — 2 khối tab (PayOS/Paddle) luôn nằm sẵn
-  // trong DOM, chỉ ẩn/hiện bằng CSS (xem className "hidden" bên dưới), nên form Paddle không bị mất khi
-  // khách chuyển qua lại giữa 2 tab.
-  useEffect(() => {
-    if (!plan?.paddle_price_id || !sessionChecked || !user || !agreed || openedRef.current) return;
-    openedRef.current = true;
-    getPaddle()
-      .then((paddle) => {
-        paddle.Checkout.open({
-          items: [{ priceId: plan.paddle_price_id, quantity: 1 }],
-          customer: { email: user.email },
-          // Gắn thẳng user_id vào transaction — webhook đọc lại đúng field này để biết cấp License cho
-          // tài khoản nào, KHÔNG cần dò theo email (tin cậy hơn, tránh sai nếu khách dùng email khác lúc
-          // thanh toán so với lúc đăng ký).
-          customData: { supabase_user_id: user.id },
-          settings: {
-            displayMode: "inline",
-            theme: "dark",
-            frameTarget: PADDLE_FRAME_CLASS,
-            frameInitialHeight: 450,
-            frameStyle: "width: 100%; min-width: 280px; background-color: transparent; border: none;",
-            successUrl: `${window.location.origin}/welcome`,
-          },
-        });
-      })
-      .catch((err) => {
-        console.error("[Paddle] Không nhúng được Checkout inline:", err.message);
-        openedRef.current = false;
-        setError(STR[lang].payError);
+  // Mở Paddle Checkout dạng overlay (popup modal Paddle tự dựng, tự quyết định kích thước — rộng rãi hơn
+  // hẳn khung nhúng "inline" hẹp 480px đã dùng trước đây, cùng vấn đề "giao diện quá bé" mà PayOS gặp
+  // phải, user yêu cầu đồng bộ cách xử lý giữa 2 kênh — xem ghi chú ở startPayos). Giờ cũng bấm nút mới
+  // mở, KHÔNG tự mở ngay khi tick đồng ý nữa — đồng bộ UX với tab PayOS.
+  const startPaddle = async () => {
+    setError("");
+    setPaddleLoading(true);
+    try {
+      const paddle = await getPaddle();
+      paddle.Checkout.open({
+        items: [{ priceId: plan.paddle_price_id, quantity: 1 }],
+        customer: { email: user.email },
+        // Gắn thẳng user_id vào transaction — webhook đọc lại đúng field này để biết cấp License cho tài
+        // khoản nào, KHÔNG cần dò theo email (tin cậy hơn, tránh sai nếu khách dùng email khác lúc thanh
+        // toán so với lúc đăng ký).
+        customData: { supabase_user_id: user.id },
+        settings: {
+          theme: "light",
+          successUrl: `${window.location.origin}/welcome`,
+        },
       });
-  }, [plan, user, sessionChecked, agreed, lang]);
-  // Chờ đủ 4 điều kiện: có price_id, đã biết trạng thái đăng nhập, ĐÃ đăng nhập, và đã tick đồng ý điều
-  // khoản — thiếu bất kỳ điều kiện nào cũng không mở Checkout (xem nhánh hiển thị tương ứng bên dưới).
+    } catch (err) {
+      console.error("[Paddle] Không mở được Checkout:", err.message);
+      setError(STR[lang].payError);
+    } finally {
+      setPaddleLoading(false);
+    }
+  };
 
   if (!mounted) return null;
   const s = STR[lang];
@@ -280,7 +273,15 @@ export default function CheckoutClient({ plan, country }) {
               </>
             ) : (
               <>
-                <div className={PADDLE_FRAME_CLASS}></div>
+                <button
+                  type="button"
+                  className="checkout-btn primary"
+                  disabled={paddleLoading}
+                  onClick={startPaddle}
+                  style={{ marginTop: 14 }}
+                >
+                  {paddleLoading ? s.payLoadingPaddle : s.payBtnPaddle}
+                </button>
                 {error && <p className="checkout-error">{error}</p>}
               </>
             )
@@ -341,5 +342,4 @@ const checkoutCss = `
   .checkout-agree a { color: var(--accent); text-decoration: underline; }
   .checkout-login-actions { display: flex; gap: 10px; }
   .checkout-login-actions .checkout-btn { margin-top: 0; }
-  .${PADDLE_FRAME_CLASS} { min-height: 420px; }
 `;

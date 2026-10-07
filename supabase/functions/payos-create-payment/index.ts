@@ -115,7 +115,11 @@ serve(async (req) => {
   const orderCode = Date.now();
   const description = `OneTools ${orderCode}`.slice(0, 25); // PayOS giới hạn description tối đa 25 ký tự
   const returnUrl = `${SITE_URL}/welcome`;
-  const cancelUrl = `${SITE_URL}/checkout?id=${planId}`;
+  // cancelUrl: khi khách bấm "Hủy" trên trang PayOS, đưa về trang chủ — trước đây trỏ lại
+  // /checkout?id=... nhưng PayOS không giữ query string khi redirect nên khách bị rơi vào trang lỗi
+  // "Không tìm thấy gói này" (CheckoutClient không có `id` → không load được plan). Về trang chủ là
+  // trải nghiệm an toàn và dễ chịu hơn khi hủy.
+  const cancelUrl = `${SITE_URL}/`;
 
   // Chữ ký khi TẠO link thanh toán: đúng 5 field cố định, sắp theo alphabet (đã đúng thứ tự dưới đây) —
   // KHÁC với chữ ký kiểm tra webhook (tính trên toàn bộ object "data" trả về, xem payos-webhook).
