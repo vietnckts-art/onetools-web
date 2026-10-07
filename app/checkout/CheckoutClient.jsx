@@ -5,6 +5,7 @@ import Link from "next/link";
 import { supabase } from "../../lib/supabaseClient";
 import { getPaddle } from "../../lib/paddleClient";
 import { useLang } from "../../lib/useLang";
+import { callEdgeFunction } from "../../lib/callEdgeFunction";
 
 const STR = {
   vi: {
@@ -17,10 +18,9 @@ const STR = {
     intlTab: "Quốc tế (Paddle)",
     domesticNote: "Dành cho khách thanh toán trong nước bằng VNĐ (chuyển khoản / QR ngân hàng).",
     intlNote: "Dành cho khách thanh toán quốc tế bằng thẻ Visa/Mastercard/PayPal, tự quy đổi theo khu vực.",
-    comingSoon: "Sắp ra mắt",
-    comingSoonMsg:
-      "Thanh toán PayOS đang được hoàn thiện, chưa sử dụng được. Vui lòng chọn tab Quốc tế (Paddle) để thanh toán ngay, hoặc liên hệ để được hỗ trợ chuyển khoản thủ công.",
-    contactBtn: "Liên hệ hỗ trợ",
+    payBtn: "Thanh toán qua PayOS",
+    payLoading: "Đang tạo link thanh toán...",
+    payosGenericError: "Không tạo được link thanh toán. Vui lòng thử lại hoặc liên hệ hỗ trợ.",
     payError: "Không tải được form thanh toán. Vui lòng tải lại trang hoặc liên hệ hỗ trợ.",
     noPaddlePrice: "Gói này chưa hỗ trợ thanh toán quốc tế qua Paddle. Vui lòng liên hệ hỗ trợ.",
     perYear: "/ năm",
@@ -47,10 +47,9 @@ const STR = {
     intlTab: "International (Paddle)",
     domesticNote: "For domestic customers paying in VND (bank transfer / QR).",
     intlNote: "For international customers paying by Visa/Mastercard/PayPal, auto-converted by region.",
-    comingSoon: "Coming soon",
-    comingSoonMsg:
-      "PayOS payment is still being finished and isn't available yet. Please use the International (Paddle) tab to pay now, or contact us for manual bank transfer support.",
-    contactBtn: "Contact support",
+    payBtn: "Pay with PayOS",
+    payLoading: "Creating payment link...",
+    payosGenericError: "Couldn't create a payment link. Please try again or contact support.",
     payError: "Couldn't load the payment form. Please reload the page or contact support.",
     noPaddlePrice: "This plan doesn't support Paddle payment yet. Please contact support.",
     perYear: "/ year",
@@ -82,6 +81,8 @@ export default function CheckoutClient({ plan, country }) {
   // Bắt buộc tick đồng ý Điều khoản/Chính sách trước khi được thanh toán — theo yêu cầu ghi ở
   // OneToolsWebsite_progress_notes.md (Paddle hay soi khoản này khi review domain lên live).
   const [agreed, setAgreed] = useState(false);
+  const [payosLoading, setPayosLoading] = useState(false);
+  const [payosError, setPayosError] = useState("");
   const openedRef = useRef(false);
 
   useEffect(() => {
@@ -90,6 +91,23 @@ export default function CheckoutClient({ plan, country }) {
       setSessionChecked(true);
     });
   }, []);
+
+  // Gọi Edge Function `payos-create-payment` để PayOS tạo link thanh toán (QR/chuyển khoản), rồi
+  // chuyển hẳn sang trang đó (KHÔNG nhúng inline như Paddle — PayOS hosted page tự xử lý toàn bộ UI
+  // nhập thông tin/chuyển khoản, đơn giản hơn tự dựng form).
+  const startPayos = async () => {
+    setPayosLoading(true);
+    setPayosError("");
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    const { ok, data } = await callEdgeFunction("payos-create-payment", { planId: plan.id }, accessToken);
+    if (ok && data?.checkoutUrl) {
+      window.location.href = data.checkoutUrl;
+      return;
+    }
+    setPayosError(data?.error || s.payosGenericError);
+    setPayosLoading(false);
+  };
 
   // Nhúng thẳng form Paddle Checkout (displayMode "inline") vào khối .paddle-checkout-frame ngay trong
   // trang này — KHÔNG mở popup/overlay riêng nữa. Chờ đã biết trạng thái đăng nhập (sessionChecked) để
@@ -178,32 +196,49 @@ export default function CheckoutClient({ plan, country }) {
         <div className={`checkout-card ${method === "payos" ? "" : "is-hidden"}`}>
           <p className="checkout-sub">{s.domesticNote}</p>
           <div className="checkout-price-big mono">{vndPrice ? `₫${vndPrice}` : "—"}</div>
-          <span className="checkout-badge">{s.comingSoon}</span>
-          <p className="checkout-sub" style={{ marginTop: 14 }}>
-            {s.comingSoonMsg}
-          </p>
-          <label className="checkout-agree">
-            <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
-            <span>
-              {s.agreePrefix}
-              <Link href="/terms" target="_blank">{s.agreeTerms}</Link>
-              {s.agreeMid1}
-              <Link href="/privacy-policy" target="_blank">{s.agreePrivacy}</Link>
-              {s.agreeMid2}
-              <Link href="/refund-policy" target="_blank">{s.agreeRefund}</Link>
-              {s.agreeSuffix}
-            </span>
-          </label>
-          <a
-            href="mailto:support@onetools-bim.com"
-            className="checkout-btn"
-            aria-disabled={!agreed}
-            onClick={(e) => {
-              if (!agreed) e.preventDefault();
-            }}
-          >
-            {s.contactBtn}
-          </a>
+
+          {!sessionChecked ? null : !user ? (
+            <div className="checkout-login-gate">
+              <p className="checkout-sub">{s.needLogin}</p>
+              <div className="checkout-login-actions">
+                <Link href="/login" className="checkout-btn">{s.loginBtn}</Link>
+                <Link href="/signup" className="checkout-btn primary">{s.signupBtn}</Link>
+              </div>
+            </div>
+          ) : (
+            <>
+              <label className="checkout-agree">
+                <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+                <span>
+                  {s.agreePrefix}
+                  <Link href="/terms" target="_blank">{s.agreeTerms}</Link>
+                  {s.agreeMid1}
+                  <Link href="/privacy-policy" target="_blank">{s.agreePrivacy}</Link>
+                  {s.agreeMid2}
+                  <Link href="/refund-policy" target="_blank">{s.agreeRefund}</Link>
+                  {s.agreeSuffix}
+                </span>
+              </label>
+              {!agreed ? (
+                <p className="checkout-sub" style={{ marginTop: 14, fontStyle: "italic" }}>
+                  {s.needAgree}
+                </p>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="checkout-btn primary"
+                    disabled={payosLoading}
+                    onClick={startPayos}
+                    style={{ marginTop: 14 }}
+                  >
+                    {payosLoading ? s.payLoading : s.payBtn}
+                  </button>
+                  {payosError && <p className="checkout-error">{payosError}</p>}
+                </>
+              )}
+            </>
+          )}
         </div>
 
         <div className={`checkout-card ${method === "paddle" ? "" : "is-hidden"}`}>

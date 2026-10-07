@@ -9,3 +9,19 @@ entrypoint = "./functions/paddle-webhook/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/paddle-webhook/*.html" ]
+
+[functions.payos-webhook]
+enabled = true
+# PayOS gọi server-to-server, KHÔNG gửi kèm JWT do Supabase cấp — phải tắt verify_jwt ở đây, nếu không
+# Supabase sẽ tự chặn request với lỗi 401 TRƯỚC KHI chạy tới code kiểm tra chữ ký PayOS trong index.ts.
+verify_jwt = false
+import_map = "./functions/payos-webhook/deno.json"
+entrypoint = "./functions/payos-webhook/index.ts"
+
+[functions.payos-create-payment]
+enabled = true
+# Gọi từ trình duyệt kèm JWT thật của người dùng đã đăng nhập (qua lib/callEdgeFunction.js) — giữ mặc
+# định verify_jwt = true (không khai dòng này) để Supabase tự chặn người chưa đăng nhập ở tầng gateway,
+# trước cả khi vào tới code trong index.ts.
+import_map = "./functions/payos-create-payment/deno.json"
+entrypoint = "./functions/payos-create-payment/index.ts"
