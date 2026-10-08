@@ -38,7 +38,6 @@ const STR = {
       "Cần đăng nhập trước khi thanh toán, để License được tự động gắn vào đúng tài khoản của bạn ngay sau khi mua.",
     loginBtn: "Đăng nhập",
     signupBtn: "Tạo tài khoản",
-    closeBtn: "Đóng",
   },
   en: {
     domesticTab: "Vietnam (PayOS)",
@@ -64,7 +63,6 @@ const STR = {
       "You need to log in before paying, so your License is automatically attached to the right account right after purchase.",
     loginBtn: "Log in",
     signupBtn: "Create account",
-    closeBtn: "Close",
   },
 };
 
@@ -80,15 +78,6 @@ export default function PaymentMethodPanel({ plan, lang, loginHref, signupHref }
   const [payosError, setPayosError] = useState("");
   const [paddleLoading, setPaddleLoading] = useState(false);
   const [paddleError, setPaddleError] = useState("");
-  // Hiện khối Paddle Checkout dạng overlay to, TỰ DỰNG (user phản ánh 2026-10-08: "giao diện ở bước 1
-  // và bước 2 đang cùng 1 kích thước... hãy làm cho giao diện lớn hơn"). Trước đó dùng thẳng
-  // displayMode mặc định ("overlay") của Paddle — overlay đó tự co giãn theo đúng chiều rộng cửa sổ
-  // trình duyệt THẬT của khách nên có khi vẫn nhỏ dù màn hình to, và mình không ép được kích thước.
-  // Giải pháp: tự dựng 1 lớp overlay full-màn-hình của riêng mình (nền trắng, rộng cố định tối đa
-  // 1100px), rồi nhúng Paddle Checkout dạng "inline" (displayMode:"inline") vào khung đó — Paddle lúc
-  // này render đúng theo chiều rộng khung mình cấp (luôn to, xuyên suốt cả bước "Your details" lẫn
-  // bước "Payment"), không còn phụ thuộc cửa sổ trình duyệt thật của khách nữa.
-  const [paddleOverlayOpen, setPaddleOverlayOpen] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -113,48 +102,35 @@ export default function PaymentMethodPanel({ plan, lang, loginHref, signupHref }
     setPayosLoading(false);
   };
 
-  // Bấm "Thanh toán qua Paddle": chỉ mở khung overlay của mình trước (mount div .pm-paddle-frame vào
-  // DOM); việc gọi Paddle.Checkout.open() thật sự do useEffect bên dưới xử lý SAU khi div đó đã tồn
-  // tại, vì Paddle cần tìm thấy đúng class đó trong DOM tại thời điểm open().
-  const startPaddle = () => {
+  // Mở Paddle Checkout dạng overlay full-màn-hình mặc định của Paddle (theme sáng). ĐÃ THỬ chuyển
+  // sang displayMode:"inline" nhúng vào khung tự dựng để ép rộng cố định (2026-10-08), nhưng user xác
+  // nhận lại: inline chỉ hiện mỗi form thanh toán trơ trọi (KHÔNG có cột order-summary bên trái, KHÔNG
+  // có header "Return to..."/"Test Mode") — cái layout 2 cột to đẹp (order summary + payment) chỉ có
+  // ở overlay mặc định của Paddle, inline không tái tạo được. Nên ĐÃ REVERT lại overlay mặc định này.
+  // Bước đầu ("Your details": nhập email + quốc gia) do Paddle tự thiết kế nhỏ/1 cột — đây là hành vi
+  // chuẩn của Paddle để thu thập thông tin tính VAT, sau khi bấm Continue sẽ tự chuyển sang bước
+  // "Payment" to, 2 cột như mong muốn. KHÔNG có setting nào của Paddle.js để ép to ngay từ bước 1.
+  const startPaddle = async () => {
     setPaddleError("");
-    setPaddleOverlayOpen(true);
-  };
-
-  useEffect(() => {
-    if (!paddleOverlayOpen) return;
-    let cancelled = false;
     setPaddleLoading(true);
-    (async () => {
-      try {
-        const paddle = await getPaddle();
-        if (cancelled) return;
-        paddle.Checkout.open({
-          items: [{ priceId: plan.paddle_price_id, quantity: 1 }],
-          customer: { email: user.email },
-          customData: { supabase_user_id: user.id },
-          settings: {
-            theme: "light",
-            displayMode: "inline",
-            frameTarget: "pm-paddle-frame",
-            frameInitialHeight: "520",
-            frameStyle: "width: 100%; min-width: 100%; background-color: transparent; border: none;",
-            successUrl: `${window.location.origin}/welcome`,
-          },
-        });
-      } catch (err) {
-        console.error("[Paddle] Không mở được Checkout:", err.message);
-        setPaddleError(s.payError);
-        setPaddleOverlayOpen(false);
-      } finally {
-        if (!cancelled) setPaddleLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paddleOverlayOpen]);
+    try {
+      const paddle = await getPaddle();
+      paddle.Checkout.open({
+        items: [{ priceId: plan.paddle_price_id, quantity: 1 }],
+        customer: { email: user.email },
+        customData: { supabase_user_id: user.id },
+        settings: {
+          theme: "light",
+          successUrl: `${window.location.origin}/welcome`,
+        },
+      });
+    } catch (err) {
+      console.error("[Paddle] Không mở được Checkout:", err.message);
+      setPaddleError(s.payError);
+    } finally {
+      setPaddleLoading(false);
+    }
+  };
 
   const vndPrice = plan.price;
 
@@ -239,22 +215,6 @@ export default function PaymentMethodPanel({ plan, lang, loginHref, signupHref }
           </div>
         </div>
       )}
-
-      {paddleOverlayOpen && (
-        <div className="pm-paddle-overlay">
-          <button
-            type="button"
-            className="pm-paddle-close"
-            onClick={() => setPaddleOverlayOpen(false)}
-            aria-label={s.closeBtn}
-          >
-            ×
-          </button>
-          <div className="pm-paddle-inner">
-            <div className="pm-paddle-frame" />
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -294,23 +254,5 @@ const pmCss = `
   .pm-login-actions { display: flex; gap: 12px; }
   @media (max-width: 900px) {
     .pm-grid { grid-template-columns: 1fr; }
-  }
-
-  /* Overlay Paddle tự dựng — rộng cố định (tối đa 1100px, nền trắng) để luôn ép Paddle hiện giao diện
-     to, 2 cột xuyên suốt mọi bước, không còn phụ thuộc chiều rộng cửa sổ trình duyệt thật của khách. */
-  .pm-paddle-overlay {
-    position: fixed; inset: 0; background: #FFFFFF; z-index: 9999;
-    overflow-y: auto; padding: 56px 24px;
-  }
-  .pm-paddle-inner { max-width: 1100px; margin: 0 auto; }
-  .pm-paddle-frame { width: 100%; min-height: 520px; }
-  .pm-paddle-close {
-    position: fixed; top: 20px; right: 24px; width: 40px; height: 40px; border-radius: 50%;
-    background: #F2F2F2; border: 1px solid #DDDDDD; color: #292929; font-size: 22px; line-height: 1;
-    cursor: pointer; z-index: 10000; display: flex; align-items: center; justify-content: center;
-  }
-  .pm-paddle-close:hover { background: #E6E6E6; }
-  @media (max-width: 600px) {
-    .pm-paddle-overlay { padding: 56px 12px; }
   }
 `;
