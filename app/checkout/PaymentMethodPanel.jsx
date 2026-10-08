@@ -177,6 +177,11 @@ export default function PaymentMethodPanel({ plan, lang, loginHref, signupHref }
             <p className="pm-sub">{s.intlNote}</p>
             {plan.paddle_price_id ? (
               <>
+                {/* Thêm giá USD tĩnh (plan.price_usd) — trước đây thiếu dòng này nên checkbox "Tôi đồng
+                    ý" của cột Paddle bị lệch lên cao hơn hẳn cột PayOS (cột PayOS có thêm dòng giá VNĐ
+                    phía trên checkbox). Thêm giá vào đây vừa đúng yêu cầu "bổ sung giá đô", vừa làm 2
+                    checkbox tự thẳng hàng vì cấu trúc 2 cột giờ giống hệt nhau (user 2026-10-08). */}
+                <div className="pm-price mono">{plan.price_usd ? `$${plan.price_usd}` : "—"}</div>
                 <label className="pm-agree">
                   <input type="checkbox" checked={agreedPaddle} onChange={(e) => setAgreedPaddle(e.target.checked)} />
                   <span>
@@ -214,6 +219,10 @@ export default function PaymentMethodPanel({ plan, lang, loginHref, signupHref }
 const pmCss = `
   .pm-root { font-family: 'Inter', -apple-system, sans-serif; color: var(--text, #FFFFFF); }
   .pm-root * { box-sizing: border-box; }
+  /* Định nghĩa riêng .mono ở đây (không dựa vào trang cha có định nghĩa sẵn hay không) — panel này
+     được nhúng ở 2 nơi khác nhau (trang chủ và /checkout), chỉ trang chủ (LandingClient.jsx) tự định
+     nghĩa .mono, nên nếu không có dòng này giá tiền trên /checkout sẽ bị thiếu font monospace. */
+  .pm-root .mono { font-family: 'JetBrains Mono', 'Inter', -apple-system, sans-serif; }
   .pm-card-narrow { max-width: 640px; margin: 0 auto; }
   .pm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: stretch; }
   .pm-card-head {
