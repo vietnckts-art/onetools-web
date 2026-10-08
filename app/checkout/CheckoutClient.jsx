@@ -72,9 +72,8 @@ const STR = {
   },
 };
 
-export default function CheckoutClient({ plan, country }) {
+export default function CheckoutClient({ plan }) {
   const { lang, mounted } = useLang();
-  const [method, setMethod] = useState(country === "VN" ? "payos" : "paddle");
   const [user, setUser] = useState(null);
   const [sessionChecked, setSessionChecked] = useState(false);
   const [error, setError] = useState("");
@@ -178,117 +177,81 @@ export default function CheckoutClient({ plan, country }) {
         <h1 className="checkout-title">{s.title}</h1>
         <div className="checkout-plan-name">{name}</div>
 
-        <div className="checkout-tabs">
-          <button
-            className={method === "payos" ? "active" : ""}
-            onClick={() => setMethod("payos")}
-          >
-            {s.domesticTab}
-          </button>
-          <button
-            className={method === "paddle" ? "active" : ""}
-            onClick={() => setMethod("paddle")}
-          >
-            {s.intlTab}
-          </button>
-        </div>
+        {/* Trước đây là 2 tab, bấm mới đổi hiện/ẩn — đổi sang hiện ĐỦ cả 2 cột cùng lúc, cạnh nhau trên
+            desktop, xếp chồng trên mobile (yêu cầu user 2026-10-08: không cần bấm vào từng tab mới thấy).
+            Gate đăng nhập + checkbox đồng ý điều khoản dùng CHUNG 1 lần cho cả trang (cùng 1 tài khoản,
+            cùng 1 bộ điều khoản dù trả qua kênh nào) — tránh lặp lại y hệt 2 lần như lúc còn 2 tab riêng. */}
+        {!sessionChecked ? null : !user ? (
+          <div className="checkout-card checkout-card-narrow">
+            <p className="checkout-sub">{s.needLogin}</p>
+            <div className="checkout-login-actions">
+              <Link href={loginHref} className="checkout-btn">{s.loginBtn}</Link>
+              <Link href={signupHref} className="checkout-btn primary">{s.signupBtn}</Link>
+            </div>
+          </div>
+        ) : (
+          <>
+            <label className="checkout-agree checkout-agree-shared">
+              <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+              <span>
+                {s.agreePrefix}
+                <Link href="/terms" target="_blank">{s.agreeTerms}</Link>
+                {s.agreeMid1}
+                <Link href="/privacy-policy" target="_blank">{s.agreePrivacy}</Link>
+                {s.agreeMid2}
+                <Link href="/refund-policy" target="_blank">{s.agreeRefund}</Link>
+                {s.agreeSuffix}
+              </span>
+            </label>
 
-        {/* 2 khối luôn nằm trong DOM, chỉ ẩn/hiện bằng CSS — giữ nguyên form Paddle đã nhúng khi đổi tab */}
-        <div className={`checkout-card ${method === "payos" ? "" : "is-hidden"}`}>
-          <p className="checkout-sub">{s.domesticNote}</p>
-          <div className="checkout-price-big mono">{vndPrice ? `₫${vndPrice}` : "—"}</div>
+            <div className="checkout-grid">
+              <div className="checkout-card">
+                <div className="checkout-card-head">{s.domesticTab}</div>
+                <p className="checkout-sub">{s.domesticNote}</p>
+                <div className="checkout-price-big mono">{vndPrice ? `₫${vndPrice}` : "—"}</div>
+                {!agreed ? (
+                  <p className="checkout-sub" style={{ fontStyle: "italic" }}>{s.needAgree}</p>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="checkout-btn primary"
+                      disabled={payosLoading}
+                      onClick={startPayos}
+                    >
+                      {payosLoading ? s.payLoading : s.payBtn}
+                    </button>
+                    {payosError && <p className="checkout-error">{payosError}</p>}
+                  </>
+                )}
+              </div>
 
-          {!sessionChecked ? null : !user ? (
-            <div className="checkout-login-gate">
-              <p className="checkout-sub">{s.needLogin}</p>
-              <div className="checkout-login-actions">
-                <Link href={loginHref} className="checkout-btn">{s.loginBtn}</Link>
-                <Link href={signupHref} className="checkout-btn primary">{s.signupBtn}</Link>
+              <div className="checkout-card">
+                <div className="checkout-card-head">{s.intlTab}</div>
+                <p className="checkout-sub">{s.intlNote}</p>
+                {plan.paddle_price_id ? (
+                  !agreed ? (
+                    <p className="checkout-sub" style={{ fontStyle: "italic" }}>{s.needAgree}</p>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        className="checkout-btn primary"
+                        disabled={paddleLoading}
+                        onClick={startPaddle}
+                      >
+                        {paddleLoading ? s.payLoadingPaddle : s.payBtnPaddle}
+                      </button>
+                      {error && <p className="checkout-error">{error}</p>}
+                    </>
+                  )
+                ) : (
+                  <p className="checkout-error">{s.noPaddlePrice}</p>
+                )}
               </div>
             </div>
-          ) : (
-            <>
-              <label className="checkout-agree">
-                <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
-                <span>
-                  {s.agreePrefix}
-                  <Link href="/terms" target="_blank">{s.agreeTerms}</Link>
-                  {s.agreeMid1}
-                  <Link href="/privacy-policy" target="_blank">{s.agreePrivacy}</Link>
-                  {s.agreeMid2}
-                  <Link href="/refund-policy" target="_blank">{s.agreeRefund}</Link>
-                  {s.agreeSuffix}
-                </span>
-              </label>
-              {!agreed ? (
-                <p className="checkout-sub" style={{ marginTop: 14, fontStyle: "italic" }}>
-                  {s.needAgree}
-                </p>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    className="checkout-btn primary"
-                    disabled={payosLoading}
-                    onClick={startPayos}
-                    style={{ marginTop: 14 }}
-                  >
-                    {payosLoading ? s.payLoading : s.payBtn}
-                  </button>
-                  {payosError && <p className="checkout-error">{payosError}</p>}
-                </>
-              )}
-            </>
-          )}
-        </div>
-
-        <div className={`checkout-card ${method === "paddle" ? "" : "is-hidden"}`}>
-          <p className="checkout-sub">{s.intlNote}</p>
-          {plan.paddle_price_id ? (
-            !sessionChecked ? null : !user ? (
-              <div className="checkout-login-gate">
-                <p className="checkout-sub">{s.needLogin}</p>
-                <div className="checkout-login-actions">
-                  <Link href={loginHref} className="checkout-btn">{s.loginBtn}</Link>
-                  <Link href={signupHref} className="checkout-btn primary">{s.signupBtn}</Link>
-                </div>
-              </div>
-            ) : !agreed ? (
-              <>
-                <label className="checkout-agree">
-                  <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
-                  <span>
-                    {s.agreePrefix}
-                    <Link href="/terms" target="_blank">{s.agreeTerms}</Link>
-                    {s.agreeMid1}
-                    <Link href="/privacy-policy" target="_blank">{s.agreePrivacy}</Link>
-                    {s.agreeMid2}
-                    <Link href="/refund-policy" target="_blank">{s.agreeRefund}</Link>
-                    {s.agreeSuffix}
-                  </span>
-                </label>
-                <p className="checkout-sub" style={{ marginTop: 14, fontStyle: "italic" }}>
-                  {s.needAgree}
-                </p>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className="checkout-btn primary"
-                  disabled={paddleLoading}
-                  onClick={startPaddle}
-                  style={{ marginTop: 14 }}
-                >
-                  {paddleLoading ? s.payLoadingPaddle : s.payBtnPaddle}
-                </button>
-                {error && <p className="checkout-error">{error}</p>}
-              </>
-            )
-          ) : (
-            <p className="checkout-error">{s.noPaddlePrice}</p>
-          )}
-        </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -301,11 +264,11 @@ const checkoutCss = `
     --text: #FFFFFF; --text-dim: #B5AA9A; --accent: #C2A47C; --warn: #D6803A;
     min-height: 100vh; background: var(--bg); color: var(--text);
     font-family: 'Inter', -apple-system, sans-serif;
-    display: flex; justify-content: center; align-items: center; padding: 64px 24px;
+    display: flex; justify-content: center; padding: 56px 32px;
   }
-  /* Khung bọc rộng hẳn ra (480px cũ trông quá nhỏ giữa nền full-screen) — 640px + padding/font-size tăng
-     theo tỉ lệ cho cân đối, không chỉ kéo rộng mỗi max-width. */
-  .checkout-wrap { width: 100%; max-width: 640px; }
+  /* Bỏ layout 1 cột hẹp 640px căn giữa — đổi sang khung rộng gần hết trang (max-width lớn hơn hẳn),
+     2 cột PayOS/Paddle hiện cạnh nhau luôn trên desktop, không cần bấm tab (yêu cầu user 2026-10-08). */
+  .checkout-wrap { width: 100%; max-width: 1180px; }
   .checkout-back { display: inline-block; color: var(--text-dim); text-decoration: none; font-size: 14.5px; margin-bottom: 28px; }
   .checkout-back:hover { color: var(--accent); }
   .checkout-title {
@@ -313,14 +276,22 @@ const checkoutCss = `
     font-size: 32px; font-weight: 700; margin: 0 0 8px;
   }
   .checkout-plan-name { font-size: 16px; color: var(--accent); font-weight: 600; margin: 0 0 26px; }
-  .checkout-tabs { display: flex; border: 1px solid var(--line); margin-bottom: 0; }
-  .checkout-tabs button {
-    flex: 1; padding: 16px; background: transparent; border: none; color: var(--text-dim);
-    font-size: 15px; font-weight: 600; cursor: pointer; font-family: 'Inter', -apple-system, sans-serif;
+  /* Checkbox đồng ý điều khoản dùng chung cho cả 2 cột — đặt trong 1 khối riêng phía trên grid, canh
+     giữa theo chiều rộng khung để không lệch hẳn sang trái trên màn hình rộng. */
+  .checkout-agree-shared {
+    max-width: 640px; margin: 0 auto 28px; border: 1px solid var(--line); background: var(--bg-raised);
+    padding: 18px 22px;
   }
-  .checkout-tabs button.active { background: var(--accent); color: #292929; }
-  .checkout-card { border: 1px solid var(--line); border-top: none; background: var(--bg-raised); padding: 40px 36px; }
-  .checkout-card.is-hidden { display: none; }
+  .checkout-card-narrow { max-width: 640px; margin: 0 auto; }
+  .checkout-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: stretch; }
+  .checkout-card-head {
+    font-family: 'Oswald', sans-serif; text-transform: uppercase; font-size: 16px; font-weight: 700;
+    color: var(--accent); margin: 0 0 16px; padding-bottom: 14px; border-bottom: 1px solid var(--line);
+  }
+  .checkout-card {
+    border: 1px solid var(--line); background: var(--bg-raised); padding: 36px 32px;
+    display: flex; flex-direction: column;
+  }
   .checkout-sub { font-size: 15px; color: var(--text-dim); line-height: 1.6; margin: 0 0 22px; }
   .checkout-price-big { font-size: 42px; font-weight: 700; margin-bottom: 20px; }
   .checkout-badge {
@@ -344,9 +315,16 @@ const checkoutCss = `
   .checkout-agree a { color: var(--accent); text-decoration: underline; }
   .checkout-login-actions { display: flex; gap: 12px; }
   .checkout-login-actions .checkout-btn { margin-top: 0; }
+  /* Dưới 900px: hết chỗ cho 2 cột cạnh nhau — xếp PayOS rồi Paddle chồng lên nhau theo chiều dọc
+     (yêu cầu user 2026-10-08: desktop hiện cạnh nhau, mobile hiện trên/dưới). */
+  @media (max-width: 900px) {
+    .checkout-grid { grid-template-columns: 1fr; }
+    .checkout-agree-shared { max-width: none; }
+  }
   @media (max-width: 600px) {
-    .checkout-root { padding: 32px 16px; align-items: flex-start; }
+    .checkout-root { padding: 32px 16px; }
     .checkout-card { padding: 28px 22px; }
+    .checkout-agree-shared { padding: 16px 18px; }
     .checkout-title { font-size: 24px; }
     .checkout-price-big { font-size: 32px; }
   }
