@@ -1232,14 +1232,18 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
           </div>
           <div className="video-grid">
             {toolItems.length > 0 ? (
-              toolItems.slice(0, 10).map((tool) => <VideoCard key={tool.code} tool={tool} />)
+              // Luôn cắt theo ĐÚNG BỘI SỐ của 3 cột — nếu không tròn hàng thì mấy ô cuối trống nhưng
+              // vẫn ăn màu nền var(--line) của .video-grid (kỹ thuật border-bằng-background-grid-gap),
+              // hiện ra thành khối xám trống xấu (user báo 2026-10-08: "hiển thị thiếu"). User chốt
+              // hiện 12 video (đủ 4 hàng x 3 cột) thay vì 9 trước đó.
+              toolItems.slice(0, 12).map((tool) => <VideoCard key={tool.code} tool={tool} />)
             ) : (
               <p className="empty-state">
                 {lang === "vi" ? "Chưa có video nào được đăng." : "No videos published yet."}
               </p>
             )}
           </div>
-          {toolItems.length > 10 && (
+          {toolItems.length > 12 && (
             <div className="tools-more">
               <Link href="/videos" className="btn-primary tools-more-link">
                 {lang === "vi" ? "Xem thêm" : "View more"}
