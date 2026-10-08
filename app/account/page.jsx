@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "../../lib/supabaseClient";
 import { callEdgeFunction } from "../../lib/callEdgeFunction";
 import { useLang } from "../../lib/useLang";
 
 const STR = {
   vi: {
+    backHome: "← Trang chủ",
     pageTitle: "Tài khoản OneTools",
     logout: "Đăng xuất",
     currentLicense: "License hiện tại",
@@ -34,6 +36,7 @@ const STR = {
     statusLabel: { active: "Đang hoạt động", trial: "Dùng thử", expired: "Đã hết hạn" },
   },
   en: {
+    backHome: "← Home",
     pageTitle: "OneTools Account",
     logout: "Log out",
     currentLicense: "Current License",
@@ -225,18 +228,28 @@ export default function AccountPage() {
           min-height: 100vh; background: var(--bg); color: var(--text);
           font-family: 'Inter', sans-serif;
           padding: 40px 24px 80px;
+          overflow-x: hidden;
         }
-        .acc-shell { max-width: 640px; margin: 0 auto; }
+        /* Reset box-sizing cho toàn bộ trang — THIẾU dòng này là nguyên nhân bị tràn ngang trên mobile
+           (user phản ánh 2026-10-08: "chạy lung tung khi lướt, phải zoom nhỏ mới cố định"): padding +
+           width mặc định (content-box) cộng dồn làm vài phần tử rộng hơn màn hình thật. */
+        .acc-root, .acc-root *, .acc-root *::before, .acc-root *::after { box-sizing: border-box; }
+        .acc-shell { max-width: 900px; margin: 0 auto; width: 100%; }
+        .acc-back {
+          display: inline-block; color: var(--text-dim); text-decoration: none;
+          font-size: 14px; margin-bottom: 18px;
+        }
+        .acc-back:hover { color: var(--accent); }
         .acc-header {
           display: flex; justify-content: space-between; align-items: center;
           margin-bottom: 28px; flex-wrap: wrap; gap: 12px;
         }
-        .acc-header-left { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+        .acc-header-left { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; min-width: 0; }
         .acc-title {
           font-family: 'Oswald', sans-serif; text-transform: uppercase;
-          font-size: 24px; font-weight: 700; margin: 0;
+          font-size: 28px; font-weight: 700; margin: 0;
         }
-        .acc-email { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
+        .acc-email { font-size: 13px; color: var(--text-dim); margin-top: 4px; word-break: break-all; }
         .acc-header-right { display: flex; align-items: center; gap: 10px; }
         .acc-lang {
           display: inline-flex; border: 1px solid var(--line); font-size: 12px;
@@ -255,12 +268,12 @@ export default function AccountPage() {
         .acc-logout:hover { border-color: var(--accent); color: var(--accent); }
         .acc-card {
           border: 1px solid var(--line); background: var(--bg-raised);
-          padding: 24px 26px; margin-bottom: 20px;
+          padding: 32px 36px; margin-bottom: 22px;
         }
         .acc-card-title {
-          font-family: 'JetBrains Mono', monospace; font-size: 11px;
+          font-family: 'JetBrains Mono', monospace; font-size: 12px;
           color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase;
-          margin: 0 0 16px;
+          margin: 0 0 18px;
         }
         .acc-badge {
           display: inline-block; padding: 3px 10px; font-size: 11.5px;
@@ -272,11 +285,14 @@ export default function AccountPage() {
         .acc-badge.expired { color: var(--error); border-color: var(--error); }
         .acc-row {
           display: flex; justify-content: space-between; gap: 12px;
-          padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13.5px;
+          padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14.5px;
         }
         .acc-row:last-child { border-bottom: none; }
-        .acc-row-label { color: var(--text-dim); }
-        .acc-row-value { text-align: right; word-break: break-all; }
+        .acc-row-label { color: var(--text-dim); flex-shrink: 0; }
+        /* min-width: 0 là chỗ mấu chốt — mặc định 1 item trong flex row KHÔNG tự co nhỏ hơn độ rộng
+           nội dung của nó (vd License Key dài không dấu cách), nên "word-break: break-all" không có
+           tác dụng và cả hàng bị tràn ra ngoài màn hình (đúng lỗi user báo trên mobile). */
+        .acc-row-value { text-align: right; word-break: break-all; min-width: 0; }
         .acc-empty { font-size: 13.5px; color: var(--text-dim); line-height: 1.6; }
         .acc-seat {
           padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 13px;
@@ -306,12 +322,24 @@ export default function AccountPage() {
         .acc-history-item {
           display: flex; justify-content: space-between; align-items: center;
           padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px;
+          gap: 10px; flex-wrap: wrap;
         }
         .acc-history-item:last-child { border-bottom: none; }
+        .acc-history-key { min-width: 0; word-break: break-all; }
         .acc-loading, .acc-error { text-align: center; padding: 60px 20px; color: var(--text-dim); }
+
+        @media (max-width: 480px) {
+          .acc-root { padding: 28px 16px 60px; }
+          .acc-card { padding: 22px 18px; }
+          .acc-title { font-size: 22px; }
+          .acc-form { flex-direction: column; }
+          .acc-input { min-width: 0; width: 100%; }
+          .acc-btn { width: 100%; }
+        }
       `}</style>
 
       <div className="acc-shell">
+        <Link href="/" className="acc-back">{s.backHome}</Link>
         <div className="acc-header">
           <div className="acc-header-left">
             <div>
@@ -412,7 +440,7 @@ export default function AccountPage() {
                 <p className="acc-card-title">{s.otherLicenses}</p>
                 {otherLicenses.map((l) => (
                   <div className="acc-history-item" key={l.id}>
-                    <span>{TYPE_LABEL[l.license_type] || l.license_type} · {l.license_key}</span>
+                    <span className="acc-history-key">{TYPE_LABEL[l.license_type] || l.license_type} · {l.license_key}</span>
                     <span className={`acc-badge ${l.status}`}>
                       {s.statusLabel[l.status] || l.status}
                     </span>

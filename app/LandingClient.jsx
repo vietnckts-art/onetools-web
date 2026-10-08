@@ -496,16 +496,19 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
         .nav-user-email {
           font-size: 12px;
           color: var(--text-dim);
-          max-width: 140px;
+          max-width: 170px;
           min-width: 0;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
           text-decoration: none;
           cursor: pointer;
-          transition: color 0.15s;
+          transition: all 0.15s;
+          border: 1px solid var(--line);
+          padding: 8px 12px;
+          display: inline-block;
         }
-        .nav-user-email:hover { color: var(--accent); }
+        .nav-user-email:hover { color: var(--accent); border-color: var(--accent); }
         .lang-toggle {
           display: inline-flex;
           border: 1px solid var(--line);
