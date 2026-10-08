@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, createContext, useContext } from "r
 import Link from "next/link";
 import { supabase } from "../lib/supabaseClient";
 import { getPaddle } from "../lib/paddleClient";
+import PaymentMethodPanel from "./checkout/PaymentMethodPanel";
 
 
 // =====================================================================
@@ -296,7 +297,17 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [previewByPriceId, setPreviewByPriceId] = useState({});
+  // Gói đang được chọn để hiện khối "Chọn phương thức thanh toán" ngay bên dưới bảng giá (yêu cầu
+  // user 2026-10-08: bấm "Đăng ký ngay" không chuyển sang /checkout nữa, mà hiện inline tại chỗ).
+  const [selectedPlanId, setSelectedPlanId] = useState(null);
+  const paymentPanelRef = useRef(null);
   const { lang, t } = useLang();
+
+  useEffect(() => {
+    if (selectedPlanId && paymentPanelRef.current) {
+      paymentPanelRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [selectedPlanId]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -385,6 +396,15 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
     };
   });
 
+  // Gói đang mở khối thanh toán inline — cần đúng ROW GỐC từ Supabase (plan.price dạng VNĐ thô,
+  // plan.paddle_price_id, name_vi/name_en) chứ không phải planItems đã bị format theo ngôn ngữ ở trên,
+  // vì PaymentMethodPanel (dùng chung với /checkout) cần đúng field thô y hệt page.jsx server-side.
+  const selectedPlan = selectedPlanId ? (plans || []).find((p) => p.id === selectedPlanId) : null;
+  const selectedPlanName = selectedPlan ? (lang === "vi" ? selectedPlan.name_vi : selectedPlan.name_en) : "";
+  const selectedPlanSelfUrl = selectedPlan ? `/checkout?id=${selectedPlan.id}` : "";
+  const selectedPlanLoginHref = selectedPlan ? `/login?redirect=${encodeURIComponent(selectedPlanSelfUrl)}` : "";
+  const selectedPlanSignupHref = selectedPlan ? `/signup?redirect=${encodeURIComponent(selectedPlanSelfUrl)}` : "";
+
   return (
     <div className="ot-root">
       <style>{`
@@ -415,7 +435,9 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
         .mono { font-family: 'Inter', -apple-system, sans-serif; }
 
         .container {
-          max-width: 1080px;
+          /* Rộng ra để vừa đúng 3 video/hàng (trước 1080px chỉ đủ chỗ cho 2) — toàn bộ section khác
+             dùng chung class "container" nên tự kéo rộng theo, trang đỡ dài hơn (yêu cầu user 2026-10-08). */
+          max-width: 1320px;
           margin: 0 auto;
           padding: 0 24px;
         }
@@ -434,7 +456,7 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
           align-items: center;
           justify-content: space-between;
           padding: 18px 24px;
-          max-width: 1080px;
+          max-width: 1320px;
           margin: 0 auto;
         }
         .nav-brand {
@@ -797,7 +819,7 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
         /* ---------- Video grid ---------- */
         .video-grid {
           display: grid;
-          grid-template-columns: repeat(2, 1fr);
+          grid-template-columns: repeat(3, 1fr);
           gap: 1px;
           background: var(--line);
           border: 1px solid var(--line);
@@ -941,9 +963,34 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
         .plan-btn:hover { border-color: var(--accent); }
         .plan-btn:disabled { opacity: 0.6; cursor: not-allowed; }
         a.plan-btn { display: block; box-sizing: border-box; text-align: center; text-decoration: none; }
+        button.plan-btn { display: block; width: 100%; box-sizing: border-box; text-align: center; }
+        .plan-btn.is-active { background: var(--accent); color: #292929; border-color: var(--accent); }
         .checkout-error {
           grid-column: 1 / -1; text-align: center; font-size: 13px; color: var(--warn); margin-top: 8px;
         }
+
+        /* ---------- Khối "Chọn phương thức thanh toán" nhúng inline dưới bảng giá ---------- */
+        .payment-panel {
+          margin-top: 1px;
+          border: 1px solid var(--line);
+          border-top: none;
+          background: var(--bg);
+          padding: 32px 28px 36px;
+        }
+        .payment-panel-head {
+          display: flex; align-items: center; justify-content: space-between;
+          margin-bottom: 24px;
+        }
+        .payment-panel-head h3 {
+          font-family: 'Oswald', sans-serif; text-transform: uppercase;
+          font-size: 20px; font-weight: 700; margin: 0; color: var(--accent);
+        }
+        .payment-panel-close {
+          width: 36px; height: 36px; flex-shrink: 0;
+          background: transparent; border: 1px solid var(--line); color: var(--text-dim);
+          font-size: 20px; line-height: 1; cursor: pointer; transition: all 0.15s;
+        }
+        .payment-panel-close:hover { border-color: var(--accent); color: var(--accent); }
 
         /* ---------- Footer ---------- */
         .footer {
@@ -992,6 +1039,10 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
           }
           .nav-burger { display: flex; }
           .nav-mobile-panel { display: flex; }
+        }
+
+        @media (max-width: 1100px) {
+          .video-grid, .pricing-grid { grid-template-columns: repeat(2, 1fr); }
         }
 
         @media (max-width: 720px) {
@@ -1228,11 +1279,16 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
                       {t.pricing.contactBtn}
                     </a>
                   ) : plan.paddlePriceId ? (
-                    // Có giá thật (paddle_price_id) — sang trang /checkout để khách tự chọn thanh
-                    // toán nội địa (PayOS) hay quốc tế (Paddle), thay vì mở thẳng Paddle Checkout.
-                    <Link href={`/checkout?id=${plan.id}`} className="plan-btn">
+                    // Có giá thật (paddle_price_id) — bấm vào hiện luôn khối "Chọn phương thức thanh
+                    // toán" ngay bên dưới bảng giá (KHÔNG chuyển trang nữa — yêu cầu user 2026-10-08),
+                    // bấm lại lần nữa (hoặc nút "×" trong khối) để đóng lại.
+                    <button
+                      type="button"
+                      className={`plan-btn ${selectedPlanId === plan.id ? "is-active" : ""}`}
+                      onClick={() => setSelectedPlanId((cur) => (cur === plan.id ? null : plan.id))}
+                    >
                       {t.pricing.subscribeBtn}
-                    </Link>
+                    </button>
                   ) : (
                     // Chưa gán paddle_price_id (VD: gói Free Trial) — Trial đã cấp miễn phí ngay
                     // lúc đăng ký tài khoản, không cần chọn phương thức thanh toán, trỏ thẳng /signup.
@@ -1248,6 +1304,28 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
               </p>
             )}
           </div>
+
+          {selectedPlan && (
+            <div className="payment-panel" ref={paymentPanelRef}>
+              <div className="payment-panel-head">
+                <h3>{selectedPlanName}</h3>
+                <button
+                  type="button"
+                  className="payment-panel-close"
+                  onClick={() => setSelectedPlanId(null)}
+                  aria-label={lang === "vi" ? "Đóng" : "Close"}
+                >
+                  ×
+                </button>
+              </div>
+              <PaymentMethodPanel
+                plan={selectedPlan}
+                lang={lang}
+                loginHref={selectedPlanLoginHref}
+                signupHref={selectedPlanSignupHref}
+              />
+            </div>
+          )}
         </div>
       </section>
 

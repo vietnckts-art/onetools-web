@@ -1,11 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { supabase } from "../../lib/supabaseClient";
-import { getPaddle } from "../../lib/paddleClient";
 import { useLang } from "../../lib/useLang";
-import { callEdgeFunction } from "../../lib/callEdgeFunction";
+import PaymentMethodPanel from "./PaymentMethodPanel";
 
 const STR = {
   vi: {
@@ -14,30 +11,6 @@ const STR = {
     notFoundTitle: "Không tìm thấy gói này",
     notFoundSub: "Gói giá có thể đã bị gỡ hoặc đường dẫn không đúng.",
     backHome: "Về trang chủ",
-    domesticTab: "Việt Nam (PayOS)",
-    intlTab: "Quốc tế (Paddle)",
-    domesticNote: "Dành cho khách thanh toán trong nước bằng VNĐ (chuyển khoản / QR ngân hàng).",
-    intlNote: "Dành cho khách thanh toán quốc tế bằng thẻ Visa/Mastercard/PayPal, tự quy đổi theo khu vực.",
-    payBtn: "Thanh toán qua PayOS",
-    payLoading: "Đang tạo link thanh toán...",
-    payosGenericError: "Không tạo được link thanh toán. Vui lòng thử lại hoặc liên hệ hỗ trợ.",
-    payBtnPaddle: "Thanh toán qua Paddle",
-    payLoadingPaddle: "Đang mở Paddle Checkout...",
-    payError: "Không mở được form thanh toán. Vui lòng thử lại hoặc liên hệ hỗ trợ.",
-    noPaddlePrice: "Gói này chưa hỗ trợ thanh toán quốc tế qua Paddle. Vui lòng liên hệ hỗ trợ.",
-    perYear: "/ năm",
-    agreePrefix: "Tôi đồng ý với ",
-    agreeTerms: "Điều khoản sử dụng",
-    agreeMid1: ", ",
-    agreePrivacy: "Chính sách bảo mật",
-    agreeMid2: " và ",
-    agreeRefund: "Chính sách hoàn tiền",
-    agreeSuffix: " của OneTools.",
-    needAgree: "Vui lòng tích đồng ý điều khoản ở trên để tiếp tục thanh toán.",
-    needLogin:
-      "Cần đăng nhập trước khi thanh toán, để License được tự động gắn vào đúng tài khoản của bạn ngay sau khi mua.",
-    loginBtn: "Đăng nhập",
-    signupBtn: "Tạo tài khoản",
   },
   en: {
     back: "← Back to pricing",
@@ -45,99 +18,16 @@ const STR = {
     notFoundTitle: "Plan not found",
     notFoundSub: "This plan may have been removed, or the link is incorrect.",
     backHome: "Back to homepage",
-    domesticTab: "Vietnam (PayOS)",
-    intlTab: "International (Paddle)",
-    domesticNote: "For domestic customers paying in VND (bank transfer / QR).",
-    intlNote: "For international customers paying by Visa/Mastercard/PayPal, auto-converted by region.",
-    payBtn: "Pay with PayOS",
-    payLoading: "Creating payment link...",
-    payosGenericError: "Couldn't create a payment link. Please try again or contact support.",
-    payBtnPaddle: "Pay with Paddle",
-    payLoadingPaddle: "Opening Paddle Checkout...",
-    payError: "Couldn't open the payment form. Please try again or contact support.",
-    noPaddlePrice: "This plan doesn't support Paddle payment yet. Please contact support.",
-    perYear: "/ year",
-    agreePrefix: "I agree to OneTools' ",
-    agreeTerms: "Terms & Conditions",
-    agreeMid1: ", ",
-    agreePrivacy: "Privacy Policy",
-    agreeMid2: ", and ",
-    agreeRefund: "Refund Policy",
-    agreeSuffix: ".",
-    needAgree: "Please agree to the terms above to continue with payment.",
-    needLogin:
-      "You need to log in before paying, so your License is automatically attached to the right account right after purchase.",
-    loginBtn: "Log in",
-    signupBtn: "Create account",
   },
 };
 
+// Trang /checkout?id=... — giờ chỉ còn giữ phần khung trang (tiêu đề, link quay lại, trạng thái
+// "không tìm thấy gói"); khối chọn PayOS/Paddle thật sự dùng chung component `PaymentMethodPanel`
+// với bản nhúng inline ở trang chủ (xem app/LandingClient.jsx) — tránh lặp code 2 nơi. Trang này vẫn
+// cần giữ lại (không xoá) vì luồng redirect-back sau đăng nhập/đăng ký (?redirect=/checkout?id=...)
+// dẫn khách quay lại đúng đây.
 export default function CheckoutClient({ plan }) {
   const { lang, mounted } = useLang();
-  const [user, setUser] = useState(null);
-  const [sessionChecked, setSessionChecked] = useState(false);
-  const [error, setError] = useState("");
-  // Bắt buộc tick đồng ý Điều khoản/Chính sách trước khi được thanh toán — theo yêu cầu ghi ở
-  // OneToolsWebsite_progress_notes.md (Paddle hay soi khoản này khi review domain lên live).
-  const [agreed, setAgreed] = useState(false);
-  const [payosLoading, setPayosLoading] = useState(false);
-  const [payosError, setPayosError] = useState("");
-  const [paddleLoading, setPaddleLoading] = useState(false);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setUser(data.session?.user ?? null);
-      setSessionChecked(true);
-    });
-  }, []);
-
-  // Gọi Edge Function `payos-create-payment` để PayOS tạo link thanh toán (QR/chuyển khoản), rồi chuyển
-  // hẳn sang trang đó (ĐÃ THỬ nhúng inline bằng @payos/payos-checkout ngày 2026-10-07 nhưng khung nhúng
-  // quá nhỏ/khó nhìn dù đã ép CSS, user yêu cầu quay lại cách chuyển hẳn trang như ban đầu — đơn giản hơn,
-  // PayOS hosted page tự xử lý toàn bộ UI nhập thông tin/chuyển khoản, không phụ thuộc cách thư viện
-  // nhúng tự set kích thước iframe).
-  const startPayos = async () => {
-    setPayosLoading(true);
-    setPayosError("");
-    const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData.session?.access_token;
-    const { ok, data } = await callEdgeFunction("payos-create-payment", { planId: plan.id }, accessToken);
-    if (ok && data?.checkoutUrl) {
-      window.location.href = data.checkoutUrl;
-      return;
-    }
-    setPayosError(data?.error || s.payosGenericError);
-    setPayosLoading(false);
-  };
-
-  // Mở Paddle Checkout dạng overlay (popup modal Paddle tự dựng, tự quyết định kích thước — rộng rãi hơn
-  // hẳn khung nhúng "inline" hẹp 480px đã dùng trước đây, cùng vấn đề "giao diện quá bé" mà PayOS gặp
-  // phải, user yêu cầu đồng bộ cách xử lý giữa 2 kênh — xem ghi chú ở startPayos). Giờ cũng bấm nút mới
-  // mở, KHÔNG tự mở ngay khi tick đồng ý nữa — đồng bộ UX với tab PayOS.
-  const startPaddle = async () => {
-    setError("");
-    setPaddleLoading(true);
-    try {
-      const paddle = await getPaddle();
-      paddle.Checkout.open({
-        items: [{ priceId: plan.paddle_price_id, quantity: 1 }],
-        customer: { email: user.email },
-        // Gắn thẳng user_id vào transaction — webhook đọc lại đúng field này để biết cấp License cho tài
-        // khoản nào, KHÔNG cần dò theo email (tin cậy hơn, tránh sai nếu khách dùng email khác lúc thanh
-        // toán so với lúc đăng ký).
-        customData: { supabase_user_id: user.id },
-        settings: {
-          theme: "light",
-          successUrl: `${window.location.origin}/welcome`,
-        },
-      });
-    } catch (err) {
-      console.error("[Paddle] Không mở được Checkout:", err.message);
-      setError(STR[lang].payError);
-    } finally {
-      setPaddleLoading(false);
-    }
-  };
 
   if (!mounted) return null;
   const s = STR[lang];
@@ -146,22 +36,20 @@ export default function CheckoutClient({ plan }) {
     return (
       <div className="checkout-root">
         <style>{checkoutCss}</style>
-        <div className="checkout-card">
-          <h1 className="checkout-title">{s.notFoundTitle}</h1>
-          <p className="checkout-sub">{s.notFoundSub}</p>
-          <Link href="/" className="checkout-btn primary" style={{ display: "block", textAlign: "center", textDecoration: "none" }}>
-            {s.backHome}
-          </Link>
+        <div className="checkout-wrap">
+          <div className="checkout-card checkout-card-narrow">
+            <h1 className="checkout-title">{s.notFoundTitle}</h1>
+            <p className="checkout-sub">{s.notFoundSub}</p>
+            <Link href="/" className="checkout-btn primary" style={{ display: "block", textAlign: "center", textDecoration: "none" }}>
+              {s.backHome}
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
 
   const name = lang === "vi" ? plan.name_vi : plan.name_en;
-  const vndPrice = plan.price;
-  // Quay lại đúng trang checkout này sau khi đăng nhập/đăng ký xong — gắn kèm query ?redirect= vào link
-  // Đăng nhập/Tạo tài khoản bên dưới, cả 2 trang /login và /signup đều tự đọc lại param này để điều
-  // hướng về đây thay vì mặc định /account (yêu cầu user 2026-10-07).
   const checkoutSelfUrl = `/checkout?id=${plan.id}`;
   const loginHref = `/login?redirect=${encodeURIComponent(checkoutSelfUrl)}`;
   const signupHref = `/signup?redirect=${encodeURIComponent(checkoutSelfUrl)}`;
@@ -177,81 +65,7 @@ export default function CheckoutClient({ plan }) {
         <h1 className="checkout-title">{s.title}</h1>
         <div className="checkout-plan-name">{name}</div>
 
-        {/* Trước đây là 2 tab, bấm mới đổi hiện/ẩn — đổi sang hiện ĐỦ cả 2 cột cùng lúc, cạnh nhau trên
-            desktop, xếp chồng trên mobile (yêu cầu user 2026-10-08: không cần bấm vào từng tab mới thấy).
-            Gate đăng nhập + checkbox đồng ý điều khoản dùng CHUNG 1 lần cho cả trang (cùng 1 tài khoản,
-            cùng 1 bộ điều khoản dù trả qua kênh nào) — tránh lặp lại y hệt 2 lần như lúc còn 2 tab riêng. */}
-        {!sessionChecked ? null : !user ? (
-          <div className="checkout-card checkout-card-narrow">
-            <p className="checkout-sub">{s.needLogin}</p>
-            <div className="checkout-login-actions">
-              <Link href={loginHref} className="checkout-btn">{s.loginBtn}</Link>
-              <Link href={signupHref} className="checkout-btn primary">{s.signupBtn}</Link>
-            </div>
-          </div>
-        ) : (
-          <>
-            <label className="checkout-agree checkout-agree-shared">
-              <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
-              <span>
-                {s.agreePrefix}
-                <Link href="/terms" target="_blank">{s.agreeTerms}</Link>
-                {s.agreeMid1}
-                <Link href="/privacy-policy" target="_blank">{s.agreePrivacy}</Link>
-                {s.agreeMid2}
-                <Link href="/refund-policy" target="_blank">{s.agreeRefund}</Link>
-                {s.agreeSuffix}
-              </span>
-            </label>
-
-            <div className="checkout-grid">
-              <div className="checkout-card">
-                <div className="checkout-card-head">{s.domesticTab}</div>
-                <p className="checkout-sub">{s.domesticNote}</p>
-                <div className="checkout-price-big mono">{vndPrice ? `₫${vndPrice}` : "—"}</div>
-                {!agreed ? (
-                  <p className="checkout-sub" style={{ fontStyle: "italic" }}>{s.needAgree}</p>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      className="checkout-btn primary"
-                      disabled={payosLoading}
-                      onClick={startPayos}
-                    >
-                      {payosLoading ? s.payLoading : s.payBtn}
-                    </button>
-                    {payosError && <p className="checkout-error">{payosError}</p>}
-                  </>
-                )}
-              </div>
-
-              <div className="checkout-card">
-                <div className="checkout-card-head">{s.intlTab}</div>
-                <p className="checkout-sub">{s.intlNote}</p>
-                {plan.paddle_price_id ? (
-                  !agreed ? (
-                    <p className="checkout-sub" style={{ fontStyle: "italic" }}>{s.needAgree}</p>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        className="checkout-btn primary"
-                        disabled={paddleLoading}
-                        onClick={startPaddle}
-                      >
-                        {paddleLoading ? s.payLoadingPaddle : s.payBtnPaddle}
-                      </button>
-                      {error && <p className="checkout-error">{error}</p>}
-                    </>
-                  )
-                ) : (
-                  <p className="checkout-error">{s.noPaddlePrice}</p>
-                )}
-              </div>
-            </div>
-          </>
-        )}
+        <PaymentMethodPanel plan={plan} lang={lang} loginHref={loginHref} signupHref={signupHref} />
       </div>
     </div>
   );
@@ -266,8 +80,6 @@ const checkoutCss = `
     font-family: 'Inter', -apple-system, sans-serif;
     display: flex; justify-content: center; padding: 56px 32px;
   }
-  /* Bỏ layout 1 cột hẹp 640px căn giữa — đổi sang khung rộng gần hết trang (max-width lớn hơn hẳn),
-     2 cột PayOS/Paddle hiện cạnh nhau luôn trên desktop, không cần bấm tab (yêu cầu user 2026-10-08). */
   .checkout-wrap { width: 100%; max-width: 1180px; }
   .checkout-back { display: inline-block; color: var(--text-dim); text-decoration: none; font-size: 14.5px; margin-bottom: 28px; }
   .checkout-back:hover { color: var(--accent); }
@@ -276,56 +88,21 @@ const checkoutCss = `
     font-size: 32px; font-weight: 700; margin: 0 0 8px;
   }
   .checkout-plan-name { font-size: 16px; color: var(--accent); font-weight: 600; margin: 0 0 26px; }
-  /* Checkbox đồng ý điều khoản dùng chung cho cả 2 cột — đặt trong 1 khối riêng phía trên grid, canh
-     giữa theo chiều rộng khung để không lệch hẳn sang trái trên màn hình rộng. */
-  .checkout-agree-shared {
-    max-width: 640px; margin: 0 auto 28px; border: 1px solid var(--line); background: var(--bg-raised);
-    padding: 18px 22px;
-  }
   .checkout-card-narrow { max-width: 640px; margin: 0 auto; }
-  .checkout-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: stretch; }
-  .checkout-card-head {
-    font-family: 'Oswald', sans-serif; text-transform: uppercase; font-size: 16px; font-weight: 700;
-    color: var(--accent); margin: 0 0 16px; padding-bottom: 14px; border-bottom: 1px solid var(--line);
-  }
   .checkout-card {
     border: 1px solid var(--line); background: var(--bg-raised); padding: 36px 32px;
-    display: flex; flex-direction: column;
   }
   .checkout-sub { font-size: 15px; color: var(--text-dim); line-height: 1.6; margin: 0 0 22px; }
-  .checkout-price-big { font-size: 42px; font-weight: 700; margin-bottom: 20px; }
-  .checkout-badge {
-    display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: 0.05em;
-    text-transform: uppercase; background: var(--warn); color: #292929; padding: 5px 12px; margin-bottom: 6px;
-  }
   .checkout-btn {
-    display: block; width: 100%; box-sizing: border-box; text-align: center; padding: 17px;
+    display: block; width: 100%; box-sizing: border-box; text-align: center; padding: 16px;
     background: transparent; color: var(--text); border: 1px solid var(--line);
-    font-size: 16px; font-weight: 600; cursor: pointer; text-decoration: none;
-    font-family: 'Inter', -apple-system, sans-serif; margin-top: 8px;
+    font-size: 15.5px; font-weight: 600; cursor: pointer; text-decoration: none;
+    font-family: 'Inter', -apple-system, sans-serif; margin-top: 10px;
   }
   .checkout-btn.primary { background: var(--accent); color: #292929; border-color: var(--accent); }
-  .checkout-btn:disabled, .checkout-btn[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
-  .checkout-error { font-size: 14.5px; color: #E08080; margin-top: 16px; }
-  .checkout-agree {
-    display: flex; align-items: flex-start; gap: 11px; margin-top: 8px;
-    font-size: 14px; color: var(--text-dim); line-height: 1.55; cursor: pointer;
-  }
-  .checkout-agree input { width: 17px; height: 17px; margin-top: 2px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
-  .checkout-agree a { color: var(--accent); text-decoration: underline; }
-  .checkout-login-actions { display: flex; gap: 12px; }
-  .checkout-login-actions .checkout-btn { margin-top: 0; }
-  /* Dưới 900px: hết chỗ cho 2 cột cạnh nhau — xếp PayOS rồi Paddle chồng lên nhau theo chiều dọc
-     (yêu cầu user 2026-10-08: desktop hiện cạnh nhau, mobile hiện trên/dưới). */
-  @media (max-width: 900px) {
-    .checkout-grid { grid-template-columns: 1fr; }
-    .checkout-agree-shared { max-width: none; }
-  }
   @media (max-width: 600px) {
     .checkout-root { padding: 32px 16px; }
     .checkout-card { padding: 28px 22px; }
-    .checkout-agree-shared { padding: 16px 18px; }
     .checkout-title { font-size: 24px; }
-    .checkout-price-big { font-size: 32px; }
   }
 `;
