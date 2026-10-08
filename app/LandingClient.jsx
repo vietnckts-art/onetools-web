@@ -501,7 +501,11 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
+          text-decoration: none;
+          cursor: pointer;
+          transition: color 0.15s;
         }
+        .nav-user-email:hover { color: var(--accent); }
         .lang-toggle {
           display: inline-flex;
           border: 1px solid var(--line);
@@ -1086,7 +1090,13 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
             <LangToggle />
             {user ? (
               <div className="nav-user">
-                <span className="nav-user-email mono">{user.email}</span>
+                <Link
+                  href="/account"
+                  className="nav-user-email mono"
+                  title={lang === "vi" ? "Tài khoản của tôi" : "My account"}
+                >
+                  {user.email}
+                </Link>
                 <button className="nav-cta nav-cta-desktop" onClick={handleLogout}>
                   {lang === "vi" ? "Đăng xuất" : "Log out"}
                 </button>
@@ -1118,15 +1128,20 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
             <a href="#pricing" onClick={() => setMobileMenuOpen(false)}>{t.nav.pricing}</a>
             <a href="#contact" onClick={() => setMobileMenuOpen(false)}>{t.nav.docs}</a>
             {user ? (
-              <button
-                className="nav-cta"
-                onClick={() => {
-                  handleLogout();
-                  setMobileMenuOpen(false);
-                }}
-              >
-                {lang === "vi" ? "Đăng xuất" : "Log out"} ({user.email})
-              </button>
+              <>
+                <Link href="/account" className="nav-cta" onClick={() => setMobileMenuOpen(false)}>
+                  {lang === "vi" ? "Tài khoản" : "Account"} ({user.email})
+                </Link>
+                <button
+                  className="nav-cta"
+                  onClick={() => {
+                    handleLogout();
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  {lang === "vi" ? "Đăng xuất" : "Log out"}
+                </button>
+              </>
             ) : (
               <>
                 <Link href="/signup" className="nav-cta" onClick={() => setMobileMenuOpen(false)}>
