@@ -477,7 +477,14 @@ function ReleasesManager() {
 
       if (uploadError) throw uploadError;
 
-      const { data: publicUrlData } = supabase.storage.from("installers").getPublicUrl(path);
+      // Ép tên file hiện ra khi khách bấm "Tải về" luôn sạch là "OneTools-Setup-<version>.exe" — KHÔNG
+      // phụ thuộc tên path lưu nội bộ trong Storage (path trên có kèm timestamp để tránh trùng/ghi đè
+      // bản cũ, nhưng không nên lộ ra ngoài). Tham số `download` của Supabase Storage set sẵn header
+      // Content-Disposition đúng tên này — trình duyệt tải về sẽ dùng tên này, không còn "đuôi lạ".
+      const cleanFileName = `OneTools-Setup-${form.version.trim()}.exe`;
+      const { data: publicUrlData } = supabase.storage
+        .from("installers")
+        .getPublicUrl(path, { download: cleanFileName });
       const downloadUrl = publicUrlData.publicUrl;
       const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
 
@@ -564,7 +571,11 @@ function ReleasesManager() {
           .upload(path, editFile, { upsert: false });
         if (uploadError) throw uploadError;
 
-        const { data: publicUrlData } = supabase.storage.from("installers").getPublicUrl(path);
+        // Giống handleUpload ở trên — ép tên tải về sạch, không lộ timestamp trong path Storage.
+        const cleanFileName = `OneTools-Setup-${editForm.version.trim()}.exe`;
+        const { data: publicUrlData } = supabase.storage
+          .from("installers")
+          .getPublicUrl(path, { download: cleanFileName });
         payload.download_url = publicUrlData.publicUrl;
         payload.file_name = editFile.name;
         payload.file_size_mb = Number((editFile.size / (1024 * 1024)).toFixed(1));

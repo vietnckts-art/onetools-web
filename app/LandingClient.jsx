@@ -31,7 +31,9 @@ const DICT = {
       updatedValue: "05/08/2026",
       licenseLabel: "Giấy phép",
       licenseValue: "Dùng thử 15 ngày",
-      guideLink: "Hướng dẫn cài đặt →",
+      guideLink: "Hướng dẫn tải xuống →",
+      downloadWarnMsg:
+        "Chrome có thể cảnh báo vì OneTools là phần mềm mới. Bấm \"Download suspicious file\", hoặc tải bằng trình duyệt khác.",
     },
     stats: [
       { num: "50", label: "Công cụ đang hoạt động" },
@@ -83,7 +85,9 @@ const DICT = {
       updatedValue: "Aug 5, 2026",
       licenseLabel: "License",
       licenseValue: "15-day free trial",
-      guideLink: "Installation guide →",
+      guideLink: "Download guide →",
+      downloadWarnMsg:
+        "Chrome may warn you because OneTools is a new app. Click \"Download suspicious file\", or download using a different browser.",
     },
     stats: [
       { num: "50", label: "Active tools" },
@@ -301,6 +305,9 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
   // user 2026-10-08: bấm "Đăng ký ngay" không chuyển sang /checkout nữa, mà hiện inline tại chỗ).
   const [selectedPlanId, setSelectedPlanId] = useState(null);
   const paymentPanelRef = useRef(null);
+  // Hiện/ẩn ghi chú cảnh báo Chrome khi bấm "Hướng dẫn tải xuống" (yêu cầu user 2026-10-09) — thay vì
+  // dẫn tới 1 trang hướng dẫn riêng (chưa có), bấm vào chỉ bật/tắt 1 ô chú thích ngay tại chỗ.
+  const [showDownloadNote, setShowDownloadNote] = useState(false);
   const { lang, t } = useLang();
 
   useEffect(() => {
@@ -723,10 +730,24 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
           font-size: 13px;
           color: var(--text);
           text-decoration: none;
+          background: none;
+          border: none;
           border-bottom: 1px solid var(--line);
+          padding: 0;
+          cursor: pointer;
           transition: border-color 0.15s;
         }
         .download-meta-link:hover { border-color: var(--accent); }
+        .download-warn-note {
+          width: 100%;
+          margin: 2px 0 0;
+          padding: 12px 16px;
+          background: var(--bg);
+          border-left: 2px solid var(--accent);
+          color: var(--text-dim);
+          font-size: 13px;
+          line-height: 1.5;
+        }
         .btn-primary {
           font-family: 'Inter', -apple-system, sans-serif;
           font-size: 14px;
@@ -1218,7 +1239,16 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
                 <span className="download-meta-label mono">{t.download.licenseLabel}</span>
                 <span className="download-meta-value">{t.download.licenseValue}</span>
               </div>
-              <a className="download-meta-link" href="#">{t.download.guideLink}</a>
+              <button
+                type="button"
+                className="download-meta-link"
+                onClick={() => setShowDownloadNote((v) => !v)}
+              >
+                {t.download.guideLink}
+              </button>
+              {showDownloadNote && (
+                <p className="download-warn-note">{t.download.downloadWarnMsg}</p>
+              )}
             </div>
           </div>
 
