@@ -944,11 +944,8 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
           transform: scale(1.08);
         }
         .video-play-btn:hover .video-play-circle svg path { fill: var(--bg); }
-        /* Thiết bị cảm ứng không có hover — để thumbnail sáng sẵn luôn, tránh bị tối vĩnh viễn vì
-           không bao giờ kích hoạt được trạng thái :hover. */
-        @media (hover: none) {
-          .video-thumb { filter: brightness(0.9); transform: scale(1); }
-        }
+        /* Yêu cầu user 2026-10-19: mobile phải tối mặc định giống desktop, chỉ sáng lên khi bấm vào
+           play (lúc đó thumbnail bị thay bằng iframe ngay nên không cần hiệu ứng sáng riêng cho chạm). */
         .video-frame iframe { border: none; }
         .video-card h3 {
           font-family: 'Oswald', sans-serif;

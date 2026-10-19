@@ -169,9 +169,8 @@ export default function VideosPageClient({ videos }) {
           background: var(--accent); transform: scale(1.08);
         }
         .video-play-btn:hover .video-play-circle svg path { fill: var(--bg); }
-        @media (hover: none) {
-          .video-thumb { filter: brightness(0.9); transform: scale(1); }
-        }
+        /* Yêu cầu user 2026-10-19: mobile phải tối mặc định giống desktop, chỉ sáng lên khi bấm vào
+           play (lúc đó thumbnail bị thay bằng iframe ngay nên không cần hiệu ứng sáng riêng cho chạm). */
         .video-frame iframe { border: none; }
         .video-card h3 { font-size: 16px; margin: 0 0 8px; font-weight: 600; }
         .video-card p { font-size: 13.5px; color: var(--text-dim); margin: 0; }
