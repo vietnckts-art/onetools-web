@@ -31,6 +31,9 @@ function detectInitialLang() {
 function VideoCard({ tool, lang }) {
   const [playing, setPlaying] = useState(false);
   const t = STRINGS[lang];
+  // Đồng bộ với VideoCard ở trang chủ (app/LandingClient.jsx, 2026-10-19): video chưa có youtubeId
+  // thật giữ nguyên nền tối trơn, không cố load thumbnail hỏng.
+  const hasVideo = Boolean(tool.youtubeId);
   return (
     <div className="video-card">
       <div className="video-card-code">{tool.code}</div>
@@ -45,7 +48,7 @@ function VideoCard({ tool, lang }) {
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
           />
-        ) : (
+        ) : hasVideo ? (
           <>
             <img
               className="video-thumb"
@@ -54,13 +57,14 @@ function VideoCard({ tool, lang }) {
               loading="lazy"
             />
             <button className="video-play-btn" onClick={() => setPlaying(true)} aria-label={t.watchLabel(tool.name)}>
-              <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
-                <circle cx="26" cy="26" r="25" stroke="#C2A47C" strokeWidth="1.5" />
-                <path d="M21 16L36 26L21 36V16Z" fill="#C2A47C" />
-              </svg>
+              <span className="video-play-circle">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M6 4L16 10L6 16V4Z" fill="#FFFFFF" />
+                </svg>
+              </span>
             </button>
           </>
-        )}
+        ) : null}
       </div>
       <h3>{tool.name}</h3>
       <p>{tool.desc}</p>
@@ -138,20 +142,35 @@ export default function VideosPageClient({ videos }) {
           aspect-ratio: 16/9; background: var(--bg-raised); border: 1px solid var(--line);
           margin-bottom: 16px; position: relative; overflow: hidden;
         }
+        /* Đồng bộ với trang chủ (app/LandingClient.jsx, 2026-10-19): KHÔNG blur — blur là nguyên nhân
+           gây "viền mờ xung quanh khó xem". Mặc định tối hơn (brightness thấp), lướt vào sáng dần lên. */
         .video-thumb {
           position: absolute; inset: 0; width: 100%; height: 100%;
-          object-fit: cover; opacity: 0;
-          filter: blur(1.5px) brightness(0.75); transform: scale(1.03);
-          transition: opacity 0.35s ease, transform 0.35s ease, filter 0.35s ease;
+          object-fit: cover; filter: brightness(0.5); transform: scale(1.02);
+          transition: filter 0.3s ease, transform 0.3s ease;
         }
         .video-card:hover .video-thumb {
-          opacity: 0.6; filter: blur(0.5px) brightness(0.85); transform: scale(1);
+          filter: brightness(0.95); transform: scale(1.05);
         }
         .video-play-btn {
           position: absolute; inset: 0; width: 100%; height: 100%;
           background: transparent; border: none; cursor: pointer;
           display: flex; align-items: center; justify-content: center;
           z-index: 2;
+        }
+        /* Nền tròn đặc phía sau icon Play, khớp trang chủ — không để thumbnail "xuyên qua". */
+        .video-play-circle {
+          width: 56px; height: 56px; border-radius: 50%;
+          background: rgba(10, 9, 8, 0.62); border: 1.5px solid var(--accent);
+          display: flex; align-items: center; justify-content: center;
+          transition: background 0.2s ease, transform 0.2s ease;
+        }
+        .video-play-btn:hover .video-play-circle {
+          background: var(--accent); transform: scale(1.08);
+        }
+        .video-play-btn:hover .video-play-circle svg path { fill: var(--bg); }
+        @media (hover: none) {
+          .video-thumb { filter: brightness(0.9); transform: scale(1); }
         }
         .video-frame iframe { border: none; }
         .video-card h3 { font-size: 16px; margin: 0 0 8px; font-weight: 600; }
