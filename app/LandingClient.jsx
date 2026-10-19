@@ -246,6 +246,10 @@ function DimensionHero() {
 function VideoCard({ tool }) {
   const [playing, setPlaying] = useState(false);
   const { t } = useLang();
+  // Chỉ video có youtubeId thật mới lấy thumbnail + nút Play — tool nào chưa có nội dung (youtubeId
+  // rỗng) giữ nguyên ô nền tối trơn của .video-frame như trước giờ (yêu cầu user 2026-10-19: "Video
+  // nào chưa có nội dung thì vẫn hiện nền đen như hiện tại").
+  const hasVideo = Boolean(tool.youtubeId);
   return (
     <div className="video-card">
       <div className="video-card-code">{tool.code}</div>
@@ -260,7 +264,7 @@ function VideoCard({ tool }) {
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
           />
-        ) : (
+        ) : hasVideo ? (
           <>
             <img
               className="video-thumb"
@@ -269,13 +273,14 @@ function VideoCard({ tool }) {
               loading="lazy"
             />
             <button className="video-play-btn" onClick={() => setPlaying(true)} aria-label={t.tools.watchLabel(tool.name)}>
-              <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
-                <circle cx="26" cy="26" r="25" stroke="#C2A47C" strokeWidth="1.5" />
-                <path d="M21 16L36 26L21 36V16Z" fill="#C2A47C" />
-              </svg>
+              <span className="video-play-circle">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M6 4L16 10L6 16V4Z" fill="#FFFFFF" />
+                </svg>
+              </span>
             </button>
           </>
-        )}
+        ) : null}
       </div>
       <h3>{tool.name}</h3>
       <p>{tool.desc}</p>
@@ -892,21 +897,21 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
           position: relative;
           overflow: hidden;
         }
+        /* Mặc định thumbnail hiện rõ nhưng tối hơn (brightness thấp), KHÔNG blur — blur là nguyên nhân
+           gây "viền mờ xung quanh khó xem" user phản ánh 2026-10-19. Lướt chuột vào thì sáng dần lên. */
         .video-thumb {
           position: absolute;
           inset: 0;
           width: 100%;
           height: 100%;
           object-fit: cover;
-          opacity: 0;
-          filter: blur(1.5px) brightness(0.75);
-          transform: scale(1.03);
-          transition: opacity 0.35s ease, transform 0.35s ease, filter 0.35s ease;
+          filter: brightness(0.5);
+          transform: scale(1.02);
+          transition: filter 0.3s ease, transform 0.3s ease;
         }
         .video-card:hover .video-thumb {
-          opacity: 0.6;
-          filter: blur(0.5px) brightness(0.85);
-          transform: scale(1);
+          filter: brightness(0.95);
+          transform: scale(1.05);
         }
         .video-play-btn {
           position: absolute;
@@ -920,6 +925,29 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
           align-items: center;
           justify-content: center;
           z-index: 2;
+        }
+        /* Nền tròn đặc phía sau icon Play — trước đây icon chỉ có viền + hình tam giác, nền trong
+           suốt nên thumbnail "xuyên qua" được, user yêu cầu 2026-10-19 phải có nền như ảnh mẫu. */
+        .video-play-circle {
+          width: 56px;
+          height: 56px;
+          border-radius: 50%;
+          background: rgba(10, 9, 8, 0.62);
+          border: 1.5px solid var(--accent);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background 0.2s ease, transform 0.2s ease;
+        }
+        .video-play-btn:hover .video-play-circle {
+          background: var(--accent);
+          transform: scale(1.08);
+        }
+        .video-play-btn:hover .video-play-circle svg path { fill: var(--bg); }
+        /* Thiết bị cảm ứng không có hover — để thumbnail sáng sẵn luôn, tránh bị tối vĩnh viễn vì
+           không bao giờ kích hoạt được trạng thái :hover. */
+        @media (hover: none) {
+          .video-thumb { filter: brightness(0.9); transform: scale(1); }
         }
         .video-frame iframe { border: none; }
         .video-card h3 {
