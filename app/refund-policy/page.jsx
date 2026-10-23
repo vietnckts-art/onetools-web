@@ -1,13 +1,16 @@
 import LegalPageShell from "../legal/LegalPageShell";
 
 export const metadata = {
-  title: "Chính sách hoàn tiền — OneTools",
+  title: "Chính sách hoàn tiền (Quốc tế) — OneTools",
   description:
-    "Chính sách hoàn tiền của OneTools: bảo đảm hoàn tiền 100% trong 14 ngày, không cần lý do.",
+    "Chính sách hoàn tiền của OneTools cho khách thanh toán quốc tế qua Paddle: bảo đảm hoàn tiền 100% trong 14 ngày, không cần lý do.",
   alternates: { canonical: "https://www.onetools-bim.com/refund-policy" },
 };
 
-const TITLE = { vi: "Chính sách hoàn tiền", en: "Refund Policy" };
+// Chỉ đổi TIÊU ĐỀ thành "(Quốc tế)" để phân biệt rõ với /refund-policy-domestic mới (2026-10-23) —
+// NỘI DUNG bên dưới giữ nguyên y hệt (vô điều kiện 14 ngày), KHÔNG được sửa vì đây là bản Paddle yêu
+// cầu phải hiển thị công khai không điều kiện/ngoại lệ (xem claude/PaddleRegistration_BankPayout_notes.md).
+const TITLE = { vi: "Chính sách hoàn tiền (Quốc tế)", en: "Refund Policy (International)" };
 const LAST_UPDATED = { vi: "Cập nhật lần cuối: Tháng 9/2026", en: "Last updated: September 2026" };
 const CONTACT_HEADING = { vi: "5. Liên hệ", en: "5. Contact" };
 

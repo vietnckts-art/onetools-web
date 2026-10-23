@@ -32,6 +32,9 @@ const STR = {
     agreePrivacy: "Chính sách bảo mật",
     agreeMid2: " và ",
     agreeRefund: "Chính sách hoàn tiền",
+    // Cột PayOS dùng chính sách hoàn tiền RIÊNG (trong nước), tách khỏi bản Paddle (user yêu cầu
+    // 2026-10-23) — xem app/refund-policy-domestic/page.jsx.
+    agreeRefundDomestic: "Chính sách hoàn tiền (trong nước)",
     agreeSuffix: " của OneTools.",
     needAgree: "Vui lòng tích đồng ý điều khoản ở trên để tiếp tục thanh toán.",
     needLogin:
@@ -57,6 +60,7 @@ const STR = {
     agreePrivacy: "Privacy Policy",
     agreeMid2: ", and ",
     agreeRefund: "Refund Policy",
+    agreeRefundDomestic: "Refund Policy (Domestic)",
     agreeSuffix: ".",
     needAgree: "Please agree to the terms above to continue with payment.",
     needLogin:
@@ -161,7 +165,7 @@ export default function PaymentMethodPanel({ plan, lang, loginHref, signupHref }
                 {s.agreeMid1}
                 <Link href="/privacy-policy" target="_blank">{s.agreePrivacy}</Link>
                 {s.agreeMid2}
-                <Link href="/refund-policy" target="_blank">{s.agreeRefund}</Link>
+                <Link href="/refund-policy-domestic" target="_blank">{s.agreeRefundDomestic}</Link>
                 {s.agreeSuffix}
               </span>
             </label>

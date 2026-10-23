@@ -16,7 +16,10 @@ const NAV_STRINGS = {
 
 const LEGAL_LINKS = [
   { href: "/privacy-policy", labelVi: "Chính sách bảo mật", labelEn: "Privacy Policy" },
-  { href: "/refund-policy", labelVi: "Chính sách hoàn tiền", labelEn: "Refund Policy" },
+  { href: "/refund-policy", labelVi: "Chính sách hoàn tiền (Quốc tế)", labelEn: "Refund Policy (International)" },
+  // Trang riêng cho khách thanh toán PayOS trong nước (user yêu cầu 2026-10-23) — KHÁC nội dung với
+  // /refund-policy (bản Paddle phải giữ vô điều kiện, xem app/refund-policy-domestic/page.jsx).
+  { href: "/refund-policy-domestic", labelVi: "Chính sách hoàn tiền (Trong nước)", labelEn: "Refund Policy (Domestic)" },
   { href: "/terms", labelVi: "Điều khoản sử dụng", labelEn: "Terms & Conditions" },
 ];
 
