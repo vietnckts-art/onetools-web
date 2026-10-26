@@ -417,11 +417,13 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
     const localizedPrice = paddlePriceId ? previewByPriceId[paddlePriceId] : null;
 
     // Giá cũ/mới khi có khuyến mại đang chạy (yêu cầu user 2026-10-26: hiện ngay trên thẻ gói, không
-    // chỉ ở bước chọn PayOS/Paddle). Bỏ qua khi đang dùng localizedPrice (giá quy đổi theo khu vực của
-    // Paddle, dạng chuỗi có ký hiệu tiền tệ riêng — không parse số an toàn được).
+    // chỉ ở bước chọn PayOS/Paddle). CHỈ bỏ qua khi ĐANG Ở TIẾNG ANH và dùng localizedPrice (giá quy
+    // đổi theo khu vực của Paddle, dạng chuỗi có ký hiệu tiền tệ riêng — không parse số an toàn được) —
+    // ở tiếng Việt luôn dùng p.price (VNĐ) nên localizedPrice không liên quan, KHÔNG được chặn ở đây
+    // (bug trước đó: card có paddle_price_id bị mất giá giảm ở VI vì check sai, dù banner vẫn hiện).
     let oldPriceDisplay = null;
     let newPriceDisplay = null;
-    if (promo && !isContact && !localizedPrice) {
+    if (promo && !isContact && !(lang === "en" && localizedPrice)) {
       if (lang === "vi") {
         const vndNum = parseInt((p.price || "").replace(/[^\d]/g, ""), 10);
         if (Number.isFinite(vndNum) && vndNum > 0) {
@@ -1038,8 +1040,10 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
           font-family: 'Oswald', sans-serif;
           font-weight: 700;
           font-size: 26px;
+          line-height: 1;
           color: var(--accent);
           flex-shrink: 0;
+          align-self: center;
         }
         .promo-banner-copy {
           display: flex;
