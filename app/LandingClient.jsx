@@ -15,8 +15,8 @@ const DICT = {
     nav: { tools: "Video hướng dẫn", pricing: "Bảng giá", docs: "Liên hệ", login: "Đăng nhập", signup: "Đăng ký" },
     hero: {
       eyebrow: "Add-in cho Revit | BIM",
-      titleAccent: "MỘT CÔNG CỤ",
-      titleWhite: "MỌI GIẢI PHÁP",
+      titleAccent: "THAO TÁC ÍT HƠN",
+      titleWhite: "SÁNG TẠO NHIỀU HƠN",
       desc: "OneTools - bộ giải pháp tất cả trong một. Chuẩn xác trong từng tính năng, giúp tự động hóa trọn vẹn từ những chi tiết nhỏ nhất đến những quy trình triển khai phức tạp. Giải phóng bạn khỏi công việc lặp lại nhàm chán để tập trung hoàn toàn vào thiết kế.",
       ctaPrimary: "Xem gói đăng ký",
       ctaGhost: "Xem video hướng dẫn",
@@ -36,7 +36,7 @@ const DICT = {
         "Chrome có thể cảnh báo vì OneTools là phần mềm mới. Bấm \"Download suspicious file\", hoặc tải bằng trình duyệt khác.",
     },
     stats: [
-      { num: "50", label: "Công cụ đang hoạt động" },
+      { num: "100", label: "Công cụ đang hoạt động" },
       { num: "2025.2026.2027", label: "Phiên bản Revit hỗ trợ" },
       { num: "VI / EN", label: "Giao diện song ngữ" },
       { num: "24h", label: "Thời gian phản hồi hỗ trợ" },
@@ -69,8 +69,8 @@ const DICT = {
     nav: { tools: "Tutorials", pricing: "Pricing", docs: "Contact", login: "Log in", signup: "Sign up" },
     hero: {
       eyebrow: "Add-in for Revit | BIM",
-      titleAccent: "ONE TOOLSET",
-      titleWhite: "EVERY SOLUTION",
+      titleAccent: "LESS CLICKING",
+      titleWhite: "MORE CREATING",
       desc: "OneTools is an all-in-one solution. Precise in every feature, delivering full automation from the smallest details to the most complex deployment workflows — freeing you from tedious repetitive work so you can focus entirely on design.",
       ctaPrimary: "View plans",
       ctaGhost: "Watch tutorials",
@@ -90,7 +90,7 @@ const DICT = {
         "Chrome may warn you because OneTools is a new app. Click \"Download suspicious file\", or download using a different browser.",
     },
     stats: [
-      { num: "50", label: "Active tools" },
+      { num: "100", label: "Active tools" },
       { num: "2025.2026.2027", label: "Revit version supported" },
       { num: "VI / EN", label: "Bilingual interface" },
       { num: "24h", label: "Support response time" },

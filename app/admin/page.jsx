@@ -36,6 +36,15 @@ const EMPTY_VIDEO = {
   is_published: true,
 };
 
+const EMPTY_PROMOTION = {
+  title_vi: "",
+  title_en: "",
+  discount_percent: "",
+  valid_from: "",
+  valid_to: "",
+  is_active: true,
+};
+
 const EMPTY_PLAN = {
   name_vi: "",
   name_en: "",
@@ -111,6 +120,9 @@ export default function AdminPage() {
         <button className={tab === "pricing" ? "active" : ""} onClick={() => setTab("pricing")}>
           Gói giá
         </button>
+        <button className={tab === "promotions" ? "active" : ""} onClick={() => setTab("promotions")}>
+          Khuyến mại
+        </button>
         <button className={tab === "releases" ? "active" : ""} onClick={() => setTab("releases")}>
           Bản cập nhật
         </button>
@@ -121,6 +133,7 @@ export default function AdminPage() {
       <main className="admin-main">
         {tab === "videos" && <VideosManager />}
         {tab === "pricing" && <PricingManager />}
+        {tab === "promotions" && <PromotionsManager />}
         {tab === "releases" && <ReleasesManager />}
         {tab === "feedback" && <FeedbackManager />}
       </main>
@@ -408,6 +421,164 @@ function PlanForm({ form, setForm, onSave, onCancel, saving, saveError }) {
       </div>
       <div className="form-row checkbox">
         <label><input type="checkbox" checked={form.is_published} onChange={(e) => setForm({ ...form, is_published: e.target.checked })} /> Đăng công khai</label>
+      </div>
+      <div className="form-actions">
+        <button className="btn-primary" onClick={onSave} disabled={saving}>{saving ? "Đang lưu..." : "Lưu"}</button>
+        <button className="btn-ghost" onClick={onCancel}>Huỷ</button>
+      </div>
+      {saveError && <p style={{ color: "#E08080", fontSize: 12.5, marginTop: 10 }}>{saveError}</p>}
+    </div>
+  );
+}
+
+// =====================================================================
+// QUẢN LÝ KHUYẾN MẠI (banner hiển thị ở cột PayOS trong /checkout, trừ giá thật qua
+// payos-create-payment — xem sql/schema_promotions.sql. CHỈ áp dụng kênh PayOS, không áp dụng Paddle.)
+// =====================================================================
+function PromotionsManager() {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState(EMPTY_PROMOTION);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data } = await supabase.from("promotions").select("*").order("created_at", { ascending: false });
+    setRows(data || []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const toFormShape = (row) => ({
+    ...row,
+    valid_from: (row.valid_from || "").slice(0, 10),
+    valid_to: (row.valid_to || "").slice(0, 10),
+  });
+
+  const startEdit = (row) => {
+    setEditing(row.id);
+    setForm(toFormShape(row));
+    setSaveError("");
+  };
+  const startNew = () => {
+    setEditing("new");
+    setForm(EMPTY_PROMOTION);
+    setSaveError("");
+  };
+  const cancel = () => {
+    setEditing(null);
+    setForm(EMPTY_PROMOTION);
+    setSaveError("");
+  };
+
+  const save = async () => {
+    if (!form.title_vi.trim() || !form.title_en.trim()) {
+      setSaveError("Cần nhập nội dung banner (cả VI và EN).");
+      return;
+    }
+    if (!form.discount_percent || Number(form.discount_percent) <= 0 || Number(form.discount_percent) > 100) {
+      setSaveError("% giảm giá phải từ 1 đến 100.");
+      return;
+    }
+    if (!form.valid_from || !form.valid_to) {
+      setSaveError("Cần chọn đủ ngày bắt đầu và ngày kết thúc.");
+      return;
+    }
+    setSaving(true);
+    setSaveError("");
+    const payload = {
+      title_vi: form.title_vi,
+      title_en: form.title_en,
+      discount_percent: Number(form.discount_percent),
+      // Lưu trọn ngày bắt đầu (00:00) tới hết ngày kết thúc (23:59:59) — khách thanh toán trong suốt
+      // ngày cuối cùng vẫn được tính là còn hiệu lực.
+      valid_from: `${form.valid_from}T00:00:00`,
+      valid_to: `${form.valid_to}T23:59:59`,
+      is_active: form.is_active,
+    };
+    const { error } =
+      editing === "new"
+        ? await supabase.from("promotions").insert([payload])
+        : await supabase.from("promotions").update(payload).eq("id", editing);
+
+    setSaving(false);
+    if (error) {
+      setSaveError(
+        "Lưu thất bại: " + error.message +
+          (error.message.includes("promotions") ? " — có thể chưa chạy sql/schema_promotions.sql trong Supabase." : "")
+      );
+      return;
+    }
+    cancel();
+    load();
+  };
+
+  const remove = async (id) => {
+    if (!confirm("Xoá đợt khuyến mại này? Không thể hoàn tác.")) return;
+    await supabase.from("promotions").delete().eq("id", id);
+    load();
+  };
+
+  const isCurrentlyLive = (r) => {
+    const now = new Date();
+    return r.is_active && new Date(r.valid_from) <= now && now <= new Date(r.valid_to);
+  };
+
+  if (loading) return <p>Đang tải...</p>;
+
+  return (
+    <div>
+      <p style={{ fontSize: 12.5, color: "#A79E8C", marginTop: -8, marginBottom: 18, maxWidth: 560 }}>
+        Chỉ áp dụng cho khách thanh toán qua PayOS (trong nước) — hiển thị banner ở `/checkout` và trang
+        chủ, đồng thời tự động trừ đúng % này vào giá VNĐ thật khi tạo đơn. Không áp dụng cho Paddle.
+      </p>
+      {editing ? (
+        <PromotionForm form={form} setForm={setForm} onSave={save} onCancel={cancel} saving={saving} saveError={saveError} />
+      ) : (
+        <button className="btn-primary" onClick={startNew}>+ Thêm đợt khuyến mại</button>
+      )}
+
+      <table className="admin-table">
+        <thead>
+          <tr>
+            <th>Nội dung (VI)</th><th>Giảm</th><th>Từ ngày</th><th>Đến ngày</th><th>Bật</th><th>Đang chạy</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.id}>
+              <td>{r.title_vi}</td>
+              <td>{r.discount_percent}%</td>
+              <td>{new Date(r.valid_from).toLocaleDateString("vi-VN")}</td>
+              <td>{new Date(r.valid_to).toLocaleDateString("vi-VN")}</td>
+              <td>{r.is_active ? "✓" : "—"}</td>
+              <td>{isCurrentlyLive(r) ? "✓ Đang hiện trên web" : "—"}</td>
+              <td className="actions">
+                <button onClick={() => startEdit(r)}>Sửa</button>
+                <button className="danger" onClick={() => remove(r.id)}>Xoá</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function PromotionForm({ form, setForm, onSave, onCancel, saving, saveError }) {
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  return (
+    <div className="admin-form">
+      <div className="form-row"><label>Nội dung banner (VI)</label><input value={form.title_vi} onChange={set("title_vi")} placeholder="vd: Khuyến mại mừng ra mắt" /></div>
+      <div className="form-row"><label>Nội dung banner (EN)</label><input value={form.title_en} onChange={set("title_en")} placeholder="e.g. Launch promotion" /></div>
+      <div className="form-row"><label>% giảm giá</label><input type="number" min="1" max="100" value={form.discount_percent} onChange={set("discount_percent")} /></div>
+      <div className="form-row"><label>Từ ngày</label><input type="date" value={form.valid_from} onChange={set("valid_from")} /></div>
+      <div className="form-row"><label>Đến ngày</label><input type="date" value={form.valid_to} onChange={set("valid_to")} /></div>
+      <div className="form-row checkbox">
+        <label><input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} /> Bật (bỏ tick để tắt ngay mà không cần xoá/sửa ngày)</label>
       </div>
       <div className="form-actions">
         <button className="btn-primary" onClick={onSave} disabled={saving}>{saving ? "Đang lưu..." : "Lưu"}</button>

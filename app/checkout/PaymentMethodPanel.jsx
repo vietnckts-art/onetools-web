@@ -82,6 +82,11 @@ export default function PaymentMethodPanel({ plan, lang, loginHref, signupHref }
   const [payosError, setPayosError] = useState("");
   const [paddleLoading, setPaddleLoading] = useState(false);
   const [paddleError, setPaddleError] = useState("");
+  // Khuyến mại đang hiệu lực (nếu có) — CHỈ áp dụng kênh PayOS, đọc từ bảng `promotions` (xem
+  // sql/schema_promotions.sql). Giá giảm hiển thị ở đây chỉ để THAM KHẢO trước khi bấm thanh toán —
+  // số tiền thật thu được payos-create-payment tự tính lại từ CÙNG bảng này ở phía server, nên luôn
+  // khớp nhau (user yêu cầu 2026-10-26: "các thông tin được khớp tự động với nhau").
+  const [promo, setPromo] = useState(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -89,6 +94,32 @@ export default function PaymentMethodPanel({ plan, lang, loginHref, signupHref }
       setSessionChecked(true);
     });
   }, []);
+
+  useEffect(() => {
+    (async () => {
+      const nowIso = new Date().toISOString();
+      const { data } = await supabase
+        .from("promotions")
+        .select("*")
+        .eq("is_active", true)
+        .lte("valid_from", nowIso)
+        .gte("valid_to", nowIso)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      setPromo(data?.[0] || null);
+    })();
+  }, []);
+
+  const parseVnd = (text) => {
+    const digits = (text || "").replace(/[^\d]/g, "");
+    return digits ? parseInt(digits, 10) : NaN;
+  };
+  const formatVnd = (n) => n.toLocaleString("vi-VN");
+  const vndOriginalNum = parseVnd(plan.price);
+  const discountedVnd =
+    promo && Number.isFinite(vndOriginalNum)
+      ? Math.round(vndOriginalNum * (1 - promo.discount_percent / 100))
+      : null;
 
   // Gọi Edge Function `payos-create-payment` rồi chuyển hẳn sang trang PayOS hosted (redirect toàn
   // trang) — ĐÃ ỔN ĐỊNH, giữ nguyên cách này (user xác nhận 2026-10-08: "trang mới Payos đã ok").
@@ -155,7 +186,26 @@ export default function PaymentMethodPanel({ plan, lang, loginHref, signupHref }
           <div className="pm-card">
             <div className="pm-card-head">{s.domesticTab}</div>
             <p className="pm-sub">{s.domesticNote}</p>
-            <div className="pm-price mono">{vndPrice ? `₫${vndPrice}` : "—"}</div>
+
+            {promo && discountedVnd !== null && (
+              <div className="pm-promo">
+                <span className="pm-promo-badge">-{promo.discount_percent}%</span>
+                <span className="pm-promo-text">{lang === "en" ? promo.title_en : promo.title_vi}</span>
+              </div>
+            )}
+
+            <div className="pm-price mono">
+              {!vndPrice ? (
+                "—"
+              ) : promo && discountedVnd !== null ? (
+                <>
+                  <span className="pm-price-old">₫{vndPrice}</span>
+                  <span className="pm-price-new">₫{formatVnd(discountedVnd)}</span>
+                </>
+              ) : (
+                `₫${vndPrice}`
+              )}
+            </div>
 
             <label className="pm-agree">
               <input type="checkbox" checked={agreedPayos} onChange={(e) => setAgreedPayos(e.target.checked)} />
@@ -240,6 +290,20 @@ const pmCss = `
   .pm-sub { font-size: 15px; color: var(--text-dim, #B5AA9A); line-height: 1.6; margin: 0 0 18px; }
   .pm-italic { font-style: italic; margin-top: 8px; margin-bottom: 0; }
   .pm-price { font-size: 38px; font-weight: 700; margin-bottom: 20px; color: var(--text, #FFFFFF); }
+  .pm-promo {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+    padding: 9px 13px; border: 1px solid var(--accent, #C2A47C); background: rgba(194,164,124,0.08);
+  }
+  .pm-promo-badge {
+    font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 21px; color: var(--accent, #C2A47C);
+    flex-shrink: 0; letter-spacing: 0.01em;
+  }
+  .pm-promo-text { font-size: 12.5px; color: var(--text, #FFFFFF); line-height: 1.4; }
+  .pm-price-old {
+    font-size: 18px; font-weight: 400; color: var(--text-dim, #B5AA9A);
+    text-decoration: line-through; margin-right: 12px;
+  }
+  .pm-price-new { color: var(--accent, #C2A47C); }
   .pm-btn {
     display: block; width: 100%; box-sizing: border-box; text-align: center; padding: 16px;
     background: transparent; color: var(--text, #FFFFFF); border: 1px solid var(--line, #454545);

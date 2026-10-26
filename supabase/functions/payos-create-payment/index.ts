@@ -104,10 +104,30 @@ serve(async (req) => {
   if (planErr || !plan || plan.is_contact) {
     return json({ error: "Gói giá không hợp lệ hoặc chưa hỗ trợ thanh toán PayOS." }, 400);
   }
-  const amount = parseVndPrice(plan.price);
-  if (!amount || amount <= 0) {
+  const originalAmount = parseVndPrice(plan.price);
+  if (!originalAmount || originalAmount <= 0) {
     return json({ error: "Gói này chưa có giá VNĐ hợp lệ." }, 400);
   }
+
+  // ----- 2b) Áp khuyến mại PayOS đang hiệu lực (nếu có) — ĐỌC LẠI Ở SERVER, không tin % giảm web đã
+  // hiển thị cho khách, để giá hiển thị (PaymentMethodPanel.jsx) và giá thu tiền thật luôn khớp nhau
+  // (user yêu cầu 2026-10-26). Chỉ áp dụng kênh PayOS — xem sql/schema_promotions.sql. Nếu nhiều đợt
+  // trùng ngày hiệu lực, chỉ lấy đúng 1 đợt được tạo gần đây nhất.
+  const nowIso = new Date().toISOString();
+  const { data: promo } = await adminClient
+    .from("promotions")
+    .select("discount_percent")
+    .eq("is_active", true)
+    .lte("valid_from", nowIso)
+    .gte("valid_to", nowIso)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const promoDiscountPercent: number | null = promo?.discount_percent || null;
+  const amount = promoDiscountPercent
+    ? Math.round(originalAmount * (1 - promoDiscountPercent / 100))
+    : originalAmount;
 
   // ----- 3) Tạo link thanh toán PayOS -----
   // orderCode: PayOS yêu cầu số nguyên, chỉ cần không trùng — dùng mốc thời gian (ms) cho đơn giản
@@ -166,6 +186,8 @@ serve(async (req) => {
     user_id: user.id,
     plan_id: planId,
     amount,
+    original_amount: originalAmount,
+    promo_discount_percent: promoDiscountPercent,
     status: "pending",
     payment_link_id: paymentLinkId,
     checkout_url: checkoutUrl,
