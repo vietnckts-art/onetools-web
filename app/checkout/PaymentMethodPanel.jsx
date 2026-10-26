@@ -420,8 +420,11 @@ const pmCss = `
   .pm-promo-code-label { display: block; font-size: 13px; color: var(--text-dim, #B5AA9A); margin-bottom: 8px; }
   .pm-promo-code-row { display: flex; gap: 10px; max-width: 420px; }
   .pm-promo-code-input {
+    /* font-size PHẢI >= 16px — dưới ngưỡng này Safari trên iPhone tự động zoom cả trang khi bấm vào
+       ô input, gây cảm giác "xô lệch, không đứng yên" (user báo lỗi 2026-10-26). Không phải lỗi CSS
+       khoá vị trí — đây là hành vi mặc định của iOS, chỉ cần tránh font-size nhỏ là hết. */
     flex: 1; min-width: 0; padding: 12px 14px; background: var(--bg, #292929);
-    border: 1px solid var(--line, #454545); color: var(--text, #FFFFFF); font-size: 14px;
+    border: 1px solid var(--line, #454545); color: var(--text, #FFFFFF); font-size: 16px;
   }
   .pm-promo-code-row .pm-btn { width: auto; margin-top: 0; padding: 12px 20px; white-space: nowrap; }
   .pm-promo-code-success { font-size: 13px; color: var(--accent, #C2A47C); margin: 8px 0 0; }
