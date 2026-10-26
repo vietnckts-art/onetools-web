@@ -1036,6 +1036,10 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
           border: 1px solid var(--line);
           background: var(--bg);
         }
+        /* Oswald có vùng đệm dọc (ascent/descent) riêng khác hẳn font chữ của .promo-banner-copy, nên
+           canh bằng line-height sẽ luôn lệch vài px tuỳ trình duyệt. Thay vào đó: cho badge GIÃN đúng
+           bằng chiều cao của khối chữ bên cạnh (align-self: stretch), rồi tự căn giữa chữ "-30%" BÊN
+           TRONG chiều cao đó bằng flex riêng của chính nó — không còn phụ thuộc line-height của font. */
         .promo-banner-badge {
           font-family: 'Oswald', sans-serif;
           font-weight: 700;
@@ -1043,7 +1047,9 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
           line-height: 1;
           color: var(--accent);
           flex-shrink: 0;
-          align-self: center;
+          align-self: stretch;
+          display: flex;
+          align-items: center;
         }
         .promo-banner-copy {
           display: flex;
