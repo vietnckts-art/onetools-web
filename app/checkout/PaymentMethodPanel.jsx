@@ -120,6 +120,13 @@ export default function PaymentMethodPanel({ plan, lang, loginHref, signupHref }
     promo && Number.isFinite(vndOriginalNum)
       ? Math.round(vndOriginalNum * (1 - promo.discount_percent / 100))
       : null;
+  // Giá USD cột Paddle — CHỈ hiển thị tham khảo (user xác nhận 2026-10-26: giá thật qua Paddle tự
+  // cấu hình riêng trong Paddle Dashboard, không bị ràng buộc bởi % này).
+  const usdOriginalNum = parseFloat(plan.price_usd);
+  const discountedUsd =
+    promo && Number.isFinite(usdOriginalNum)
+      ? Math.round(usdOriginalNum * (1 - promo.discount_percent / 100) * 100) / 100
+      : null;
 
   // Gọi Edge Function `payos-create-payment` rồi chuyển hẳn sang trang PayOS hosted (redirect toàn
   // trang) — ĐÃ ỔN ĐỊNH, giữ nguyên cách này (user xác nhận 2026-10-08: "trang mới Payos đã ok").
@@ -187,13 +194,6 @@ export default function PaymentMethodPanel({ plan, lang, loginHref, signupHref }
             <div className="pm-card-head">{s.domesticTab}</div>
             <p className="pm-sub">{s.domesticNote}</p>
 
-            {promo && discountedVnd !== null && (
-              <div className="pm-promo">
-                <span className="pm-promo-badge">-{promo.discount_percent}%</span>
-                <span className="pm-promo-text">{lang === "en" ? promo.title_en : promo.title_vi}</span>
-              </div>
-            )}
-
             <div className="pm-price mono">
               {!vndPrice ? (
                 "—"
@@ -237,7 +237,18 @@ export default function PaymentMethodPanel({ plan, lang, loginHref, signupHref }
             <p className="pm-sub">{s.intlNote}</p>
             {plan.paddle_price_id ? (
               <>
-                <div className="pm-price mono">{plan.price_usd ? `$${plan.price_usd}` : "—"}</div>
+                <div className="pm-price mono">
+                  {!plan.price_usd ? (
+                    "—"
+                  ) : promo && discountedUsd !== null ? (
+                    <>
+                      <span className="pm-price-old">${plan.price_usd}</span>
+                      <span className="pm-price-new">${discountedUsd}</span>
+                    </>
+                  ) : (
+                    `$${plan.price_usd}`
+                  )}
+                </div>
 
                 <label className="pm-agree">
                   <input type="checkbox" checked={agreedPaddle} onChange={(e) => setAgreedPaddle(e.target.checked)} />
@@ -290,15 +301,6 @@ const pmCss = `
   .pm-sub { font-size: 15px; color: var(--text-dim, #B5AA9A); line-height: 1.6; margin: 0 0 18px; }
   .pm-italic { font-style: italic; margin-top: 8px; margin-bottom: 0; }
   .pm-price { font-size: 38px; font-weight: 700; margin-bottom: 20px; color: var(--text, #FFFFFF); }
-  .pm-promo {
-    display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
-    padding: 9px 13px; border: 1px solid var(--accent, #C2A47C); background: rgba(194,164,124,0.08);
-  }
-  .pm-promo-badge {
-    font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 21px; color: var(--accent, #C2A47C);
-    flex-shrink: 0; letter-spacing: 0.01em;
-  }
-  .pm-promo-text { font-size: 12.5px; color: var(--text, #FFFFFF); line-height: 1.4; }
   .pm-price-old {
     font-size: 18px; font-weight: 400; color: var(--text-dim, #B5AA9A);
     text-decoration: line-through; margin-right: 12px;

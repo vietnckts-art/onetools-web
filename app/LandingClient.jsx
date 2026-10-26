@@ -313,7 +313,29 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
   // Hiện/ẩn ghi chú cảnh báo Chrome khi bấm "Hướng dẫn tải xuống" (yêu cầu user 2026-10-09) — thay vì
   // dẫn tới 1 trang hướng dẫn riêng (chưa có), bấm vào chỉ bật/tắt 1 ô chú thích ngay tại chỗ.
   const [showDownloadNote, setShowDownloadNote] = useState(false);
+  // Khuyến mại đang hiệu lực (nếu có) — đọc từ bảng `promotions` (sql/schema_promotions.sql). Dùng để
+  // hiện banner ngay trên khu vực chọn gói + giá cũ/mới trên từng thẻ gói (user yêu cầu 2026-10-26: dời
+  // banner lên đây, KHÔNG hiện lại ở bước chọn PayOS/Paddle nữa — PaymentMethodPanel.jsx chỉ còn hiện
+  // giá cũ/mới, không hiện banner). % giảm chỉ được THU TIỀN THẬT ở kênh PayOS (payos-create-payment tự
+  // tính lại) — hiển thị giá mới cho Paddle (USD) ở đây chỉ mang tính tham khảo, giá thật qua Paddle do
+  // admin tự cấu hình riêng trong Paddle Dashboard.
+  const [promo, setPromo] = useState(null);
   const { lang, t } = useLang();
+
+  useEffect(() => {
+    (async () => {
+      const nowIso = new Date().toISOString();
+      const { data } = await supabase
+        .from("promotions")
+        .select("*")
+        .eq("is_active", true)
+        .lte("valid_from", nowIso)
+        .gte("valid_to", nowIso)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      setPromo(data?.[0] || null);
+    })();
+  }, []);
 
   useEffect(() => {
     if (selectedPlanId && paymentPanelRef.current) {
@@ -393,12 +415,38 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
     // Giá đã quy đổi theo khu vực do Paddle trả về (VD: "£31.00" cho khách UK) — CHỈ hiện khi có
     // sẵn (đã gọi PricePreview thành công), nếu không vẫn dùng giá tĩnh price/price_usd như cũ.
     const localizedPrice = paddlePriceId ? previewByPriceId[paddlePriceId] : null;
+
+    // Giá cũ/mới khi có khuyến mại đang chạy (yêu cầu user 2026-10-26: hiện ngay trên thẻ gói, không
+    // chỉ ở bước chọn PayOS/Paddle). Bỏ qua khi đang dùng localizedPrice (giá quy đổi theo khu vực của
+    // Paddle, dạng chuỗi có ký hiệu tiền tệ riêng — không parse số an toàn được).
+    let oldPriceDisplay = null;
+    let newPriceDisplay = null;
+    if (promo && !isContact && !localizedPrice) {
+      if (lang === "vi") {
+        const vndNum = parseInt((p.price || "").replace(/[^\d]/g, ""), 10);
+        if (Number.isFinite(vndNum) && vndNum > 0) {
+          const discounted = Math.round(vndNum * (1 - promo.discount_percent / 100));
+          oldPriceDisplay = `${currency}${p.price}`;
+          newPriceDisplay = `${currency}${discounted.toLocaleString("vi-VN")}`;
+        }
+      } else {
+        const usdNum = parseFloat(p.price_usd);
+        if (Number.isFinite(usdNum) && usdNum > 0) {
+          const discounted = Math.round(usdNum * (1 - promo.discount_percent / 100) * 100) / 100;
+          oldPriceDisplay = `${currency}${p.price_usd}`;
+          newPriceDisplay = `${currency}${discounted}`;
+        }
+      }
+    }
+
     return {
       id: p.id,
       name: lang === "vi" ? p.name_vi : p.name_en,
       price: isContact ? t.pricing.contactLabel : price,
       currency,
       isContact,
+      oldPriceDisplay,
+      newPriceDisplay,
       period: lang === "vi" ? p.period_vi : p.period_en,
       seats: lang === "vi" ? p.seats_vi : p.seats_en,
       features: lang === "vi" ? p.features_vi : p.features_en,
@@ -973,6 +1021,34 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
         }
         .billing-toggle button.active { background: var(--accent); color: #292929; }
 
+        /* Banner khuyến mại ngay trên khu vực chọn gói (user yêu cầu 2026-10-26) — chỉ hiện khi có
+           đợt khuyến mại đang trong khoảng ngày hiệu lực (xem useEffect đọc bảng promotions). */
+        .promo-banner {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          margin-bottom: 24px;
+          padding: 16px 22px;
+          border: 1px solid var(--accent);
+          background: rgba(194, 164, 124, 0.08);
+        }
+        .promo-banner-badge {
+          font-family: 'Oswald', sans-serif;
+          font-weight: 700;
+          font-size: 26px;
+          color: var(--accent);
+          flex-shrink: 0;
+        }
+        .promo-banner-text {
+          font-size: 14.5px;
+          color: var(--text);
+          font-weight: 600;
+          letter-spacing: 0.01em;
+        }
+        @media (max-width: 600px) {
+          .promo-banner { flex-wrap: wrap; padding: 14px 18px; }
+        }
+
         .pricing-grid {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
@@ -991,6 +1067,11 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
         .plan-seats { font-family: 'Inter', -apple-system, sans-serif; font-size: 12px; color: var(--text-dim); margin-bottom: 20px; }
         .plan-price { font-family: 'Inter', -apple-system, sans-serif; font-size: 30px; font-weight: 700; margin-bottom: 2px; }
         .plan-price .period { font-size: 13px; color: var(--text-dim); font-weight: 400; }
+        .plan-price-old {
+          font-size: 16px; font-weight: 400; color: var(--text-dim);
+          text-decoration: line-through; margin-right: 10px;
+        }
+        .plan-price-new { color: var(--accent); }
         .plan-features { list-style: none; padding: 0; margin: 24px 0 28px; flex: 1; }
         .plan-features li {
           font-size: 13.5px;
@@ -1334,6 +1415,12 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
               <h2>{t.pricing.title}</h2>
             </div>
           </div>
+          {promo && (
+            <div className="promo-banner">
+              <span className="promo-banner-badge mono">-{promo.discount_percent}%</span>
+              <span className="promo-banner-text">{lang === "en" ? promo.title_en : promo.title_vi}</span>
+            </div>
+          )}
           <div className="pricing-grid">
             {planItems.length > 0 ? (
               planItems.map((plan) => (
@@ -1341,9 +1428,16 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
                   <div className="plan-name">{plan.name}</div>
                   <div className="plan-seats mono">{plan.seats}</div>
                   <div className="plan-price mono">
-                    {plan.isContact
-                      ? plan.price
-                      : (lang === "en" && plan.localizedPrice) || `${plan.currency}${plan.price}`}
+                    {plan.isContact ? (
+                      plan.price
+                    ) : plan.oldPriceDisplay && plan.newPriceDisplay ? (
+                      <>
+                        <span className="plan-price-old">{plan.oldPriceDisplay}</span>
+                        <span className="plan-price-new">{plan.newPriceDisplay}</span>
+                      </>
+                    ) : (
+                      (lang === "en" && plan.localizedPrice) || `${plan.currency}${plan.price}`
+                    )}
                     {plan.period && <span className="period"> {plan.period}</span>}
                   </div>
                   <ul className="plan-features">
