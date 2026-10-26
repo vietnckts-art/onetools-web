@@ -1026,11 +1026,13 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
         .promo-banner {
           display: flex;
           align-items: center;
+          justify-content: center;
+          text-align: center;
           gap: 14px;
           margin-bottom: 24px;
           padding: 16px 22px;
-          border: 1px solid var(--accent);
-          background: rgba(194, 164, 124, 0.08);
+          border: 1px solid var(--line);
+          background: var(--bg);
         }
         .promo-banner-badge {
           font-family: 'Oswald', sans-serif;
@@ -1039,11 +1041,22 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
           color: var(--accent);
           flex-shrink: 0;
         }
+        .promo-banner-copy {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 3px;
+        }
         .promo-banner-text {
           font-size: 14.5px;
           color: var(--text);
           font-weight: 600;
           letter-spacing: 0.01em;
+        }
+        .promo-banner-subtext {
+          font-size: 12.5px;
+          color: var(--text-dim);
+          font-weight: 400;
         }
         @media (max-width: 600px) {
           .promo-banner { flex-wrap: wrap; padding: 14px 18px; }
@@ -1418,7 +1431,14 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
           {promo && (
             <div className="promo-banner">
               <span className="promo-banner-badge mono">-{promo.discount_percent}%</span>
-              <span className="promo-banner-text">{lang === "en" ? promo.title_en : promo.title_vi}</span>
+              <div className="promo-banner-copy">
+                <span className="promo-banner-text">{lang === "en" ? promo.title_en : promo.title_vi}</span>
+                {(lang === "en" ? promo.subtitle_en : promo.subtitle_vi) && (
+                  <span className="promo-banner-subtext">
+                    {lang === "en" ? promo.subtitle_en : promo.subtitle_vi}
+                  </span>
+                )}
+              </div>
             </div>
           )}
           <div className="pricing-grid">

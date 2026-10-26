@@ -41,6 +41,15 @@ const STR = {
       "Cần đăng nhập trước khi thanh toán, để License được tự động gắn vào đúng tài khoản của bạn ngay sau khi mua.",
     loginBtn: "Đăng nhập",
     signupBtn: "Tạo tài khoản",
+    // Mã khuyến mãi cá nhân — độc lập với banner khuyến mại tự động ở trang chủ. Nếu nhập mã hợp lệ,
+    // mã này THAY THẾ hoàn toàn % khuyến mại tự động (không cộng dồn).
+    promoCodeLabel: "Mã khuyến mãi (nếu có)",
+    promoCodePlaceholder: "Nhập mã...",
+    promoCodeApply: "Áp dụng",
+    promoCodeApplying: "Đang kiểm tra...",
+    promoCodeRemove: "Bỏ mã",
+    promoCodeGenericError: "Không kiểm tra được mã khuyến mãi. Vui lòng thử lại.",
+    promoCodeApplied: (pct) => `Đã áp dụng mã giảm ${pct}%.`,
   },
   en: {
     domesticTab: "Vietnam (PayOS)",
@@ -67,6 +76,13 @@ const STR = {
       "You need to log in before paying, so your License is automatically attached to the right account right after purchase.",
     loginBtn: "Log in",
     signupBtn: "Create account",
+    promoCodeLabel: "Promo code (if any)",
+    promoCodePlaceholder: "Enter code...",
+    promoCodeApply: "Apply",
+    promoCodeApplying: "Checking...",
+    promoCodeRemove: "Remove",
+    promoCodeGenericError: "Couldn't check the promo code. Please try again.",
+    promoCodeApplied: (pct) => `${pct}% discount code applied.`,
   },
 };
 
@@ -87,6 +103,14 @@ export default function PaymentMethodPanel({ plan, lang, loginHref, signupHref }
   // số tiền thật thu được payos-create-payment tự tính lại từ CÙNG bảng này ở phía server, nên luôn
   // khớp nhau (user yêu cầu 2026-10-26: "các thông tin được khớp tự động với nhau").
   const [promo, setPromo] = useState(null);
+  // Mã khuyến mãi cá nhân (tặng riêng, admin tạo/kiểm soát ở /admin → "Mã khuyến mãi") — ĐỘC LẬP với
+  // `promo` tự động ở trên (user yêu cầu 2026-10-26). Nếu áp mã thành công, mã này THAY THẾ hoàn toàn
+  // % khuyến mại tự động, không cộng dồn. appliedPromoCode giữ nguyên object trả về từ Edge Function
+  // validate-promo-code (đã có sẵn discount_percent).
+  const [promoCodeInput, setPromoCodeInput] = useState("");
+  const [appliedPromoCode, setAppliedPromoCode] = useState(null);
+  const [promoCodeLoading, setPromoCodeLoading] = useState(false);
+  const [promoCodeError, setPromoCodeError] = useState("");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -116,17 +140,50 @@ export default function PaymentMethodPanel({ plan, lang, loginHref, signupHref }
   };
   const formatVnd = (n) => n.toLocaleString("vi-VN");
   const vndOriginalNum = parseVnd(plan.price);
+  const usdOriginalNum = parseFloat(plan.price_usd);
+  // Mã khuyến mãi cá nhân (nếu đã áp) THAY THẾ hoàn toàn % khuyến mại tự động — không cộng dồn.
+  const activeDiscountPercent = appliedPromoCode
+    ? appliedPromoCode.discount_percent
+    : promo
+    ? promo.discount_percent
+    : null;
   const discountedVnd =
-    promo && Number.isFinite(vndOriginalNum)
-      ? Math.round(vndOriginalNum * (1 - promo.discount_percent / 100))
+    activeDiscountPercent != null && Number.isFinite(vndOriginalNum)
+      ? Math.round(vndOriginalNum * (1 - activeDiscountPercent / 100))
       : null;
   // Giá USD cột Paddle — CHỈ hiển thị tham khảo (user xác nhận 2026-10-26: giá thật qua Paddle tự
   // cấu hình riêng trong Paddle Dashboard, không bị ràng buộc bởi % này).
-  const usdOriginalNum = parseFloat(plan.price_usd);
   const discountedUsd =
-    promo && Number.isFinite(usdOriginalNum)
-      ? Math.round(usdOriginalNum * (1 - promo.discount_percent / 100) * 100) / 100
+    activeDiscountPercent != null && Number.isFinite(usdOriginalNum)
+      ? Math.round(usdOriginalNum * (1 - activeDiscountPercent / 100) * 100) / 100
       : null;
+
+  const applyPromoCode = async () => {
+    if (!promoCodeInput.trim()) return;
+    setPromoCodeLoading(true);
+    setPromoCodeError("");
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    const { ok, data } = await callEdgeFunction(
+      "validate-promo-code",
+      { planId: plan.id, code: promoCodeInput.trim() },
+      accessToken
+    );
+    setPromoCodeLoading(false);
+    if (ok && data?.valid) {
+      setAppliedPromoCode(data);
+      setPromoCodeError("");
+    } else {
+      setAppliedPromoCode(null);
+      setPromoCodeError(data?.error || s.promoCodeGenericError);
+    }
+  };
+
+  const removePromoCode = () => {
+    setAppliedPromoCode(null);
+    setPromoCodeInput("");
+    setPromoCodeError("");
+  };
 
   // Gọi Edge Function `payos-create-payment` rồi chuyển hẳn sang trang PayOS hosted (redirect toàn
   // trang) — ĐÃ ỔN ĐỊNH, giữ nguyên cách này (user xác nhận 2026-10-08: "trang mới Payos đã ok").
@@ -135,7 +192,11 @@ export default function PaymentMethodPanel({ plan, lang, loginHref, signupHref }
     setPayosError("");
     const { data: sessionData } = await supabase.auth.getSession();
     const accessToken = sessionData.session?.access_token;
-    const { ok, data } = await callEdgeFunction("payos-create-payment", { planId: plan.id }, accessToken);
+    const { ok, data } = await callEdgeFunction(
+      "payos-create-payment",
+      { planId: plan.id, promoCode: appliedPromoCode?.code || undefined },
+      accessToken
+    );
     if (ok && data?.checkoutUrl) {
       window.location.href = data.checkoutUrl;
       return;
@@ -189,7 +250,36 @@ export default function PaymentMethodPanel({ plan, lang, loginHref, signupHref }
           </div>
         </div>
       ) : (
-        <div className="pm-grid">
+        <>
+          <div className="pm-promo-code">
+            <label className="pm-promo-code-label" htmlFor="pm-promo-code-input">{s.promoCodeLabel}</label>
+            <div className="pm-promo-code-row">
+              <input
+                id="pm-promo-code-input"
+                className="pm-promo-code-input mono"
+                value={promoCodeInput}
+                onChange={(e) => setPromoCodeInput(e.target.value)}
+                placeholder={s.promoCodePlaceholder}
+                disabled={!!appliedPromoCode || promoCodeLoading}
+              />
+              {appliedPromoCode ? (
+                <button type="button" className="pm-btn" onClick={removePromoCode}>{s.promoCodeRemove}</button>
+              ) : (
+                <button
+                  type="button"
+                  className="pm-btn"
+                  disabled={promoCodeLoading || !promoCodeInput.trim()}
+                  onClick={applyPromoCode}
+                >
+                  {promoCodeLoading ? s.promoCodeApplying : s.promoCodeApply}
+                </button>
+              )}
+            </div>
+            {appliedPromoCode && <p className="pm-promo-code-success">{s.promoCodeApplied(appliedPromoCode.discount_percent)}</p>}
+            {promoCodeError && <p className="pm-error">{promoCodeError}</p>}
+          </div>
+
+          <div className="pm-grid">
           <div className="pm-card">
             <div className="pm-card-head">{s.domesticTab}</div>
             <p className="pm-sub">{s.domesticNote}</p>
@@ -197,7 +287,7 @@ export default function PaymentMethodPanel({ plan, lang, loginHref, signupHref }
             <div className="pm-price mono">
               {!vndPrice ? (
                 "—"
-              ) : promo && discountedVnd !== null ? (
+              ) : activeDiscountPercent != null && discountedVnd !== null ? (
                 <>
                   <span className="pm-price-old">₫{vndPrice}</span>
                   <span className="pm-price-new">₫{formatVnd(discountedVnd)}</span>
@@ -240,7 +330,7 @@ export default function PaymentMethodPanel({ plan, lang, loginHref, signupHref }
                 <div className="pm-price mono">
                   {!plan.price_usd ? (
                     "—"
-                  ) : promo && discountedUsd !== null ? (
+                  ) : activeDiscountPercent != null && discountedUsd !== null ? (
                     <>
                       <span className="pm-price-old">${plan.price_usd}</span>
                       <span className="pm-price-new">${discountedUsd}</span>
@@ -278,7 +368,8 @@ export default function PaymentMethodPanel({ plan, lang, loginHref, signupHref }
               <p className="pm-error">{s.noPaddlePrice}</p>
             )}
           </div>
-        </div>
+          </div>
+        </>
       )}
     </div>
   );
@@ -322,6 +413,15 @@ const pmCss = `
   .pm-agree input { width: 17px; height: 17px; margin-top: 2px; accent-color: var(--accent, #C2A47C); cursor: pointer; flex-shrink: 0; }
   .pm-agree a { color: var(--accent, #C2A47C); text-decoration: underline; }
   .pm-login-actions { display: flex; gap: 12px; }
+  .pm-promo-code { margin-bottom: 24px; }
+  .pm-promo-code-label { display: block; font-size: 13px; color: var(--text-dim, #B5AA9A); margin-bottom: 8px; }
+  .pm-promo-code-row { display: flex; gap: 10px; max-width: 420px; }
+  .pm-promo-code-input {
+    flex: 1; min-width: 0; padding: 12px 14px; background: var(--bg, #292929);
+    border: 1px solid var(--line, #454545); color: var(--text, #FFFFFF); font-size: 14px;
+  }
+  .pm-promo-code-row .pm-btn { width: auto; margin-top: 0; padding: 12px 20px; white-space: nowrap; }
+  .pm-promo-code-success { font-size: 13px; color: var(--accent, #C2A47C); margin: 8px 0 0; }
   @media (max-width: 900px) {
     .pm-grid { grid-template-columns: 1fr; }
   }

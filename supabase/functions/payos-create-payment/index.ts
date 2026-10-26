@@ -85,9 +85,11 @@ serve(async (req) => {
   // ----- 2) Đọc đúng giá từ DB theo plan_id — KHÔNG tin số tiền do trình duyệt gửi lên, tránh khách
   // tự sửa amount trước khi gọi API. -----
   let planId: string | undefined;
+  let rawPromoCode: string | undefined;
   try {
     const body = await req.json();
     planId = body?.planId;
+    rawPromoCode = body?.promoCode;
   } catch {
     return json({ error: "Body không phải JSON hợp lệ" }, 400);
   }
@@ -109,22 +111,58 @@ serve(async (req) => {
     return json({ error: "Gói này chưa có giá VNĐ hợp lệ." }, 400);
   }
 
-  // ----- 2b) Áp khuyến mại PayOS đang hiệu lực (nếu có) — ĐỌC LẠI Ở SERVER, không tin % giảm web đã
-  // hiển thị cho khách, để giá hiển thị (PaymentMethodPanel.jsx) và giá thu tiền thật luôn khớp nhau
-  // (user yêu cầu 2026-10-26). Chỉ áp dụng kênh PayOS — xem sql/schema_promotions.sql. Nếu nhiều đợt
-  // trùng ngày hiệu lực, chỉ lấy đúng 1 đợt được tạo gần đây nhất.
-  const nowIso = new Date().toISOString();
-  const { data: promo } = await adminClient
-    .from("promotions")
-    .select("discount_percent")
-    .eq("is_active", true)
-    .lte("valid_from", nowIso)
-    .gte("valid_to", nowIso)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  // ----- 2b) Mã khuyến mãi cá nhân (nếu khách có nhập ở bước thanh toán) — ĐỌC LẠI Ở SERVER, không
+  // tin % giảm mà validate-promo-code đã trả về trước đó cho trình duyệt, để tránh khách tự sửa %.
+  // Nếu mã hợp lệ, mã này THAY THẾ hoàn toàn % của đợt khuyến mại tự động bên dưới (không cộng dồn —
+  // quyết định của user 2026-10-26). Nếu mã không còn hợp lệ (hết hạn/hết lượt/sai email) giữa lúc
+  // validate và lúc bấm thanh toán, CHẶN LUÔN và báo lỗi rõ ràng — không âm thầm tính giá gốc, tránh
+  // khách tưởng được giảm giá mà thực ra không được.
+  let promoDiscountPercent: number | null = null;
+  let appliedPromoCode: string | null = null;
 
-  const promoDiscountPercent: number | null = promo?.discount_percent || null;
+  if (rawPromoCode && rawPromoCode.trim()) {
+    const code = rawPromoCode.trim().toUpperCase();
+    const { data: promoCode, error: codeErr } = await adminClient
+      .from("promo_codes")
+      .select("*")
+      .eq("code", code)
+      .maybeSingle();
+
+    if (codeErr || !promoCode || !promoCode.is_active) {
+      return json({ error: "Mã khuyến mãi không tồn tại hoặc đã bị tắt." }, 400);
+    }
+    const now = new Date();
+    if (promoCode.valid_from && now < new Date(promoCode.valid_from)) {
+      return json({ error: "Mã khuyến mãi chưa tới ngày áp dụng." }, 400);
+    }
+    if (promoCode.valid_to && now > new Date(promoCode.valid_to)) {
+      return json({ error: "Mã khuyến mãi đã hết hạn." }, 400);
+    }
+    if (promoCode.max_uses != null && promoCode.used_count >= promoCode.max_uses) {
+      return json({ error: "Mã khuyến mãi đã hết lượt sử dụng." }, 400);
+    }
+    if (promoCode.assigned_email && promoCode.assigned_email.trim().toLowerCase() !== (user.email || "").trim().toLowerCase()) {
+      return json({ error: "Mã khuyến mãi này không áp dụng cho tài khoản của bạn." }, 400);
+    }
+    promoDiscountPercent = promoCode.discount_percent;
+    appliedPromoCode = code;
+  } else {
+    // ----- Không có mã riêng → áp khuyến mại PayOS tự động đang hiệu lực (nếu có) — xem
+    // sql/schema_promotions.sql. Nếu nhiều đợt trùng ngày hiệu lực, chỉ lấy đúng 1 đợt được tạo gần
+    // đây nhất.
+    const nowIso = new Date().toISOString();
+    const { data: promo } = await adminClient
+      .from("promotions")
+      .select("discount_percent")
+      .eq("is_active", true)
+      .lte("valid_from", nowIso)
+      .gte("valid_to", nowIso)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    promoDiscountPercent = promo?.discount_percent || null;
+  }
+
   const amount = promoDiscountPercent
     ? Math.round(originalAmount * (1 - promoDiscountPercent / 100))
     : originalAmount;
@@ -188,6 +226,7 @@ serve(async (req) => {
     amount,
     original_amount: originalAmount,
     promo_discount_percent: promoDiscountPercent,
+    promo_code: appliedPromoCode,
     status: "pending",
     payment_link_id: paymentLinkId,
     checkout_url: checkoutUrl,

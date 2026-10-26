@@ -39,10 +39,23 @@ const EMPTY_VIDEO = {
 const EMPTY_PROMOTION = {
   title_vi: "",
   title_en: "",
+  subtitle_vi: "",
+  subtitle_en: "",
   discount_percent: "",
   valid_from: "",
   valid_to: "",
   is_active: true,
+};
+
+const EMPTY_PROMO_CODE = {
+  code: "",
+  discount_percent: "",
+  max_uses: "",
+  assigned_email: "",
+  valid_from: "",
+  valid_to: "",
+  is_active: true,
+  note: "",
 };
 
 const EMPTY_PLAN = {
@@ -123,6 +136,9 @@ export default function AdminPage() {
         <button className={tab === "promotions" ? "active" : ""} onClick={() => setTab("promotions")}>
           Khuyến mại
         </button>
+        <button className={tab === "promo_codes" ? "active" : ""} onClick={() => setTab("promo_codes")}>
+          Mã khuyến mãi
+        </button>
         <button className={tab === "releases" ? "active" : ""} onClick={() => setTab("releases")}>
           Bản cập nhật
         </button>
@@ -134,6 +150,7 @@ export default function AdminPage() {
         {tab === "videos" && <VideosManager />}
         {tab === "pricing" && <PricingManager />}
         {tab === "promotions" && <PromotionsManager />}
+        {tab === "promo_codes" && <PromoCodesManager />}
         {tab === "releases" && <ReleasesManager />}
         {tab === "feedback" && <FeedbackManager />}
       </main>
@@ -454,6 +471,8 @@ function PromotionsManager() {
 
   const toFormShape = (row) => ({
     ...row,
+    subtitle_vi: row.subtitle_vi || "",
+    subtitle_en: row.subtitle_en || "",
     valid_from: (row.valid_from || "").slice(0, 10),
     valid_to: (row.valid_to || "").slice(0, 10),
   });
@@ -492,6 +511,8 @@ function PromotionsManager() {
     const payload = {
       title_vi: form.title_vi,
       title_en: form.title_en,
+      subtitle_vi: form.subtitle_vi?.trim() || null,
+      subtitle_en: form.subtitle_en?.trim() || null,
       discount_percent: Number(form.discount_percent),
       // Lưu trọn ngày bắt đầu (00:00) tới hết ngày kết thúc (23:59:59) — khách thanh toán trong suốt
       // ngày cuối cùng vẫn được tính là còn hiệu lực.
@@ -508,7 +529,11 @@ function PromotionsManager() {
     if (error) {
       setSaveError(
         "Lưu thất bại: " + error.message +
-          (error.message.includes("promotions") ? " — có thể chưa chạy sql/schema_promotions.sql trong Supabase." : "")
+          (error.message.includes("subtitle")
+            ? " — có thể chưa chạy sql/schema_promo_v2.sql trong Supabase."
+            : error.message.includes("promotions")
+            ? " — có thể chưa chạy sql/schema_promotions.sql trong Supabase."
+            : "")
       );
       return;
     }
@@ -572,13 +597,181 @@ function PromotionForm({ form, setForm, onSave, onCancel, saving, saveError }) {
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   return (
     <div className="admin-form">
-      <div className="form-row"><label>Nội dung banner (VI)</label><input value={form.title_vi} onChange={set("title_vi")} placeholder="vd: Khuyến mại mừng ra mắt" /></div>
-      <div className="form-row"><label>Nội dung banner (EN)</label><input value={form.title_en} onChange={set("title_en")} placeholder="e.g. Launch promotion" /></div>
+      <div className="form-row"><label>Nội dung banner (VI) — dòng trên, chữ trắng</label><input value={form.title_vi} onChange={set("title_vi")} placeholder="vd: Khuyến mại mừng ra mắt" /></div>
+      <div className="form-row"><label>Nội dung banner (EN) — dòng trên, chữ trắng</label><input value={form.title_en} onChange={set("title_en")} placeholder="e.g. Launch promotion" /></div>
+      <div className="form-row"><label>Dòng phụ (VI) — không bắt buộc, chữ nhỏ màu vàng, vd thời gian áp dụng</label><input value={form.subtitle_vi} onChange={set("subtitle_vi")} placeholder="vd: (từ ngày 26/10/2026 đến 01/12/2026)" /></div>
+      <div className="form-row"><label>Dòng phụ (EN) — không bắt buộc, chữ nhỏ màu vàng</label><input value={form.subtitle_en} onChange={set("subtitle_en")} placeholder="e.g. (from Oct 26 to Dec 1, 2026)" /></div>
       <div className="form-row"><label>% giảm giá</label><input type="number" min="1" max="100" value={form.discount_percent} onChange={set("discount_percent")} /></div>
       <div className="form-row"><label>Từ ngày</label><input type="date" value={form.valid_from} onChange={set("valid_from")} /></div>
       <div className="form-row"><label>Đến ngày</label><input type="date" value={form.valid_to} onChange={set("valid_to")} /></div>
       <div className="form-row checkbox">
         <label><input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} /> Bật (bỏ tick để tắt ngay mà không cần xoá/sửa ngày)</label>
+      </div>
+      <div className="form-actions">
+        <button className="btn-primary" onClick={onSave} disabled={saving}>{saving ? "Đang lưu..." : "Lưu"}</button>
+        <button className="btn-ghost" onClick={onCancel}>Huỷ</button>
+      </div>
+      {saveError && <p style={{ color: "#E08080", fontSize: 12.5, marginTop: 10 }}>{saveError}</p>}
+    </div>
+  );
+}
+
+// =====================================================================
+// QUẢN LÝ MÃ KHUYẾN MÃI (tặng riêng cá nhân — khách nhập ở bước thanh toán, xem
+// supabase/functions/validate-promo-code + sql/schema_promo_v2.sql). ĐỘC LẬP với tab "Khuyến mại" ở
+// trên — mã ở đây, nếu khách áp thành công, THAY THẾ hoàn toàn % khuyến mại tự động, không cộng dồn.
+// Bảng promo_codes CỐ Ý không cho web đọc trực tiếp (không có policy select công khai) nên component
+// này chỉ hoạt động khi đăng nhập admin (is_admin() true, policy "for all" đã cho phép admin đọc/ghi).
+// =====================================================================
+function PromoCodesManager() {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState(EMPTY_PROMO_CODE);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data } = await supabase.from("promo_codes").select("*").order("created_at", { ascending: false });
+    setRows(data || []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const toFormShape = (row) => ({
+    ...row,
+    max_uses: row.max_uses == null ? "" : String(row.max_uses),
+    assigned_email: row.assigned_email || "",
+    valid_from: (row.valid_from || "").slice(0, 10),
+    valid_to: (row.valid_to || "").slice(0, 10),
+    note: row.note || "",
+  });
+
+  const startEdit = (row) => {
+    setEditing(row.id);
+    setForm(toFormShape(row));
+    setSaveError("");
+  };
+  const startNew = () => {
+    setEditing("new");
+    setForm(EMPTY_PROMO_CODE);
+    setSaveError("");
+  };
+  const cancel = () => {
+    setEditing(null);
+    setForm(EMPTY_PROMO_CODE);
+    setSaveError("");
+  };
+
+  const save = async () => {
+    if (!form.code.trim()) {
+      setSaveError("Cần nhập mã.");
+      return;
+    }
+    if (!form.discount_percent || Number(form.discount_percent) <= 0 || Number(form.discount_percent) > 100) {
+      setSaveError("% giảm giá phải từ 1 đến 100.");
+      return;
+    }
+    setSaving(true);
+    setSaveError("");
+    const payload = {
+      code: form.code.trim().toUpperCase(),
+      discount_percent: Number(form.discount_percent),
+      max_uses: form.max_uses.trim() ? Number(form.max_uses) : null,
+      assigned_email: form.assigned_email.trim() || null,
+      // Để trống ngày = không giới hạn (null) — khác với tab "Khuyến mại" tự động (bắt buộc chọn đủ
+      // ngày), vì mã tặng riêng thường không cần giới hạn thời gian.
+      valid_from: form.valid_from ? `${form.valid_from}T00:00:00` : null,
+      valid_to: form.valid_to ? `${form.valid_to}T23:59:59` : null,
+      is_active: form.is_active,
+      note: form.note.trim() || null,
+    };
+    const { error } =
+      editing === "new"
+        ? await supabase.from("promo_codes").insert([payload])
+        : await supabase.from("promo_codes").update(payload).eq("id", editing);
+
+    setSaving(false);
+    if (error) {
+      setSaveError(
+        "Lưu thất bại: " + error.message +
+          (error.message.includes("promo_codes") ? " — có thể chưa chạy sql/schema_promo_v2.sql trong Supabase." : "") +
+          (error.message.includes("duplicate") || error.message.includes("unique") ? " — mã này đã tồn tại, hãy dùng mã khác." : "")
+      );
+      return;
+    }
+    cancel();
+    load();
+  };
+
+  const remove = async (id) => {
+    if (!confirm("Xoá mã khuyến mãi này? Không thể hoàn tác.")) return;
+    await supabase.from("promo_codes").delete().eq("id", id);
+    load();
+  };
+
+  if (loading) return <p>Đang tải...</p>;
+
+  return (
+    <div>
+      <p style={{ fontSize: 12.5, color: "#A79E8C", marginTop: -8, marginBottom: 18, maxWidth: 620 }}>
+        Mã tặng riêng cho cá nhân — khách nhập ở ô "Mã khuyến mãi" trong bước thanh toán. Nếu áp thành
+        công, mã này THAY THẾ hoàn toàn % của đợt khuyến mại tự động (tab "Khuyến mại"), không cộng dồn.
+        Giá thật chỉ bị trừ ở kênh PayOS — Paddle chỉ hiển thị tham khảo, giống tab "Khuyến mại".
+      </p>
+      {editing ? (
+        <PromoCodeForm form={form} setForm={setForm} onSave={save} onCancel={cancel} saving={saving} saveError={saveError} />
+      ) : (
+        <button className="btn-primary" onClick={startNew}>+ Thêm mã mới</button>
+      )}
+
+      <table className="admin-table">
+        <thead>
+          <tr>
+            <th>Mã</th><th>Giảm</th><th>Đã dùng / Tối đa</th><th>Riêng cho email</th><th>Hiệu lực</th><th>Bật</th><th>Ghi chú</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.id}>
+              <td className="mono">{r.code}</td>
+              <td>{r.discount_percent}%</td>
+              <td>{r.used_count}{r.max_uses != null ? ` / ${r.max_uses}` : " / —"}</td>
+              <td>{r.assigned_email || "—"}</td>
+              <td>
+                {r.valid_from ? new Date(r.valid_from).toLocaleDateString("vi-VN") : "…"}
+                {" → "}
+                {r.valid_to ? new Date(r.valid_to).toLocaleDateString("vi-VN") : "…"}
+              </td>
+              <td>{r.is_active ? "✓" : "—"}</td>
+              <td>{r.note || "—"}</td>
+              <td className="actions">
+                <button onClick={() => startEdit(r)}>Sửa</button>
+                <button className="danger" onClick={() => remove(r.id)}>Xoá</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function PromoCodeForm({ form, setForm, onSave, onCancel, saving, saveError }) {
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  return (
+    <div className="admin-form">
+      <div className="form-row"><label>Mã (không phân biệt hoa/thường, tự chuyển IN HOA khi lưu)</label><input value={form.code} onChange={set("code")} placeholder="vd: TANG_TUAN_30" /></div>
+      <div className="form-row"><label>% giảm giá</label><input type="number" min="1" max="100" value={form.discount_percent} onChange={set("discount_percent")} /></div>
+      <div className="form-row"><label>Giới hạn số lần dùng (để trống = không giới hạn)</label><input type="number" min="1" value={form.max_uses} onChange={set("max_uses")} placeholder="vd: 1" /></div>
+      <div className="form-row"><label>Chỉ cho đúng email này dùng (để trống = ai cũng dùng được)</label><input value={form.assigned_email} onChange={set("assigned_email")} placeholder="vd: khach@gmail.com" /></div>
+      <div className="form-row"><label>Có hiệu lực từ ngày (để trống = không giới hạn)</label><input type="date" value={form.valid_from} onChange={set("valid_from")} /></div>
+      <div className="form-row"><label>Đến ngày (để trống = không giới hạn)</label><input type="date" value={form.valid_to} onChange={set("valid_to")} /></div>
+      <div className="form-row"><label>Ghi chú nội bộ (chỉ admin thấy, không hiện cho khách)</label><input value={form.note} onChange={set("note")} placeholder="vd: Tặng anh Tuấn - KOL" /></div>
+      <div className="form-row checkbox">
+        <label><input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} /> Bật (bỏ tick để tắt ngay mà không cần xoá)</label>
       </div>
       <div className="form-actions">
         <button className="btn-primary" onClick={onSave} disabled={saving}>{saving ? "Đang lưu..." : "Lưu"}</button>

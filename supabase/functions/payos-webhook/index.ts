@@ -176,6 +176,15 @@ serve(async (req) => {
     .update({ status: "paid", paid_at: new Date().toISOString(), license_key: licenseKey })
     .eq("order_code", orderCode);
 
+  // Đơn có áp Mã khuyến mãi cá nhân (khác banner khuyến mại tự động) → tăng used_count sau khi xác
+  // nhận thanh toán thành công thật sự (không tăng lúc khách chỉ mới nhập/validate ở bước checkout).
+  if (order.promo_code) {
+    const { error: incErr } = await supabase.rpc("increment_promo_code_usage", { p_code: order.promo_code });
+    if (incErr) {
+      console.error("[payos-webhook] Không tăng được used_count cho mã:", order.promo_code, incErr.message);
+    }
+  }
+
   console.log(
     `[payos-webhook] Đã cấp License ${licenseKey} (${planInfo.license_type}) cho user ${order.user_id}, order ${orderCode}`
   );
