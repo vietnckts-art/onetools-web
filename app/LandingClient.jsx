@@ -1053,12 +1053,14 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
         }
         .promo-banner-text {
           font-size: 14.5px;
+          line-height: 1.3;
           color: var(--text);
           font-weight: 600;
           letter-spacing: 0.01em;
         }
         .promo-banner-subtext {
           font-size: 12.5px;
+          line-height: 1.3;
           color: var(--text-dim);
           font-weight: 400;
         }

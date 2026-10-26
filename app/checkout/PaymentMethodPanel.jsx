@@ -43,7 +43,7 @@ const STR = {
     signupBtn: "Tạo tài khoản",
     // Mã khuyến mãi cá nhân — độc lập với banner khuyến mại tự động ở trang chủ. Nếu nhập mã hợp lệ,
     // mã này THAY THẾ hoàn toàn % khuyến mại tự động (không cộng dồn).
-    promoCodeLabel: "Mã khuyến mãi (nếu có)",
+    promoCodeLabel: "Gift Code / Voucher Code",
     promoCodePlaceholder: "Nhập mã...",
     promoCodeApply: "Áp dụng",
     promoCodeApplying: "Đang kiểm tra...",
@@ -76,7 +76,7 @@ const STR = {
       "You need to log in before paying, so your License is automatically attached to the right account right after purchase.",
     loginBtn: "Log in",
     signupBtn: "Create account",
-    promoCodeLabel: "Promo code (if any)",
+    promoCodeLabel: "Gift Code / Voucher Code",
     promoCodePlaceholder: "Enter code...",
     promoCodeApply: "Apply",
     promoCodeApplying: "Checking...",
@@ -391,10 +391,13 @@ const pmCss = `
   }
   .pm-sub { font-size: 15px; color: var(--text-dim, #B5AA9A); line-height: 1.6; margin: 0 0 18px; }
   .pm-italic { font-style: italic; margin-top: 8px; margin-bottom: 0; }
-  .pm-price { font-size: 38px; font-weight: 700; margin-bottom: 20px; color: var(--text, #FFFFFF); }
+  .pm-price {
+    display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px;
+    font-size: 38px; font-weight: 700; margin-bottom: 20px; color: var(--text, #FFFFFF);
+  }
   .pm-price-old {
     font-size: 18px; font-weight: 400; color: var(--text-dim, #B5AA9A);
-    text-decoration: line-through; margin-right: 12px;
+    text-decoration: line-through;
   }
   .pm-price-new { color: var(--accent, #C2A47C); }
   .pm-btn {
@@ -424,5 +427,10 @@ const pmCss = `
   .pm-promo-code-success { font-size: 13px; color: var(--accent, #C2A47C); margin: 8px 0 0; }
   @media (max-width: 900px) {
     .pm-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 600px) {
+    .pm-card { padding: 26px 20px; }
+    .pm-price { font-size: 30px; }
+    .pm-price-old { font-size: 15px; }
   }
 `;
