@@ -1024,54 +1024,44 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
         .billing-toggle button.active { background: var(--accent); color: #292929; }
 
         /* Banner khuyến mại ngay trên khu vực chọn gói (user yêu cầu 2026-10-26) — chỉ hiện khi có
-           đợt khuyến mại đang trong khoảng ngày hiệu lực (xem useEffect đọc bảng promotions). */
+           đợt khuyến mại đang trong khoảng ngày hiệu lực (xem useEffect đọc bảng promotions). Xếp DỌC
+           luôn (badge % trên cùng, rồi tới tiêu đề, rồi dòng phụ), căn giữa ở MỌI kích thước màn hình
+           (user xác nhận 2026-10-26, gửi ảnh mobile làm mẫu — trước đó để badge nằm NGANG bên trái 2
+           dòng chữ trên desktop, không đúng ý muốn, kể cả sau nhiều lần chỉnh căn giữa theo chiều dọc). */
         .promo-banner {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          text-align: center;
-          gap: 14px;
-          margin-bottom: 24px;
-          padding: 16px 22px;
-          border: 1px solid var(--line);
-          background: var(--bg);
-        }
-        /* Oswald có vùng đệm dọc (ascent/descent) riêng khác hẳn font chữ của .promo-banner-copy, nên
-           canh bằng line-height sẽ luôn lệch vài px tuỳ trình duyệt. Thay vào đó: cho badge GIÃN đúng
-           bằng chiều cao của khối chữ bên cạnh (align-self: stretch), rồi tự căn giữa chữ "-30%" BÊN
-           TRONG chiều cao đó bằng flex riêng của chính nó — không còn phụ thuộc line-height của font. */
-        .promo-banner-badge {
-          font-family: 'Oswald', sans-serif;
-          font-weight: 700;
-          font-size: 26px;
-          line-height: 1;
-          color: var(--accent);
-          flex-shrink: 0;
-          align-self: stretch;
-          display: flex;
-          align-items: center;
-        }
-        .promo-banner-copy {
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 3px;
+          text-align: center;
+          gap: 6px;
+          margin-bottom: 24px;
+          padding: 20px 22px;
+          border: 1px solid var(--line);
+          background: var(--bg);
+        }
+        .promo-banner-badge {
+          font-family: 'Oswald', sans-serif;
+          font-weight: 700;
+          font-size: 28px;
+          line-height: 1.2;
+          color: var(--accent);
         }
         .promo-banner-text {
           font-size: 14.5px;
-          line-height: 1.3;
+          line-height: 1.4;
           color: var(--text);
           font-weight: 600;
           letter-spacing: 0.01em;
+          max-width: 560px;
         }
         .promo-banner-subtext {
           font-size: 12.5px;
-          line-height: 1.3;
+          line-height: 1.4;
           color: var(--text-dim);
           font-weight: 400;
         }
         @media (max-width: 600px) {
-          .promo-banner { flex-wrap: wrap; padding: 14px 18px; }
+          .promo-banner { padding: 16px 18px; }
         }
 
         .pricing-grid {
@@ -1443,14 +1433,12 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
           {promo && (
             <div className="promo-banner">
               <span className="promo-banner-badge mono">-{promo.discount_percent}%</span>
-              <div className="promo-banner-copy">
-                <span className="promo-banner-text">{lang === "en" ? promo.title_en : promo.title_vi}</span>
-                {(lang === "en" ? promo.subtitle_en : promo.subtitle_vi) && (
-                  <span className="promo-banner-subtext">
-                    {lang === "en" ? promo.subtitle_en : promo.subtitle_vi}
-                  </span>
-                )}
-              </div>
+              <span className="promo-banner-text">{lang === "en" ? promo.title_en : promo.title_vi}</span>
+              {(lang === "en" ? promo.subtitle_en : promo.subtitle_vi) && (
+                <span className="promo-banner-subtext">
+                  {lang === "en" ? promo.subtitle_en : promo.subtitle_vi}
+                </span>
+              )}
             </div>
           )}
           <div className="pricing-grid">
