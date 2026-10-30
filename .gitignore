@@ -5,3 +5,7 @@ out/
 .env.local
 .DS_Store
 npm-debug.log*
+supabase.exe
+supabase/.temp/
+.vscode/
+Claude outputs/
