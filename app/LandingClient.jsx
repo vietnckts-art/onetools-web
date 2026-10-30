@@ -1377,7 +1377,7 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
 
           <div className="ribbon-label mono">Light/Dark Mode</div>
           <div className="hero-ribbon-frame">
-            <img src="/ribbon-lightdark.jpg" alt="OneTools ribbon trong Autodesk Revit" />
+            <img src="/ribbon-lightdark.png" alt="OneTools ribbon trong Autodesk Revit" />
           </div>
         </div>
       </header>

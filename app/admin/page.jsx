@@ -787,7 +787,7 @@ function PromoCodeForm({ form, setForm, onSave, onCancel, saving, saveError }) {
 // =====================================================================
 const EMPTY_RELEASE = {
   version: "",
-  revit_versions: "2025 · 2026",
+  revit_versions: "2025 · 2026 · 2027",
   release_notes_vi: "",
   release_notes_en: "",
   is_latest: true,
