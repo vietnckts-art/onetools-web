@@ -36,7 +36,7 @@ const DICT = {
         "Chrome có thể cảnh báo vì OneTools là phần mềm mới. Bấm \"Download suspicious file\", hoặc tải bằng trình duyệt khác.",
     },
     stats: [
-      { num: "100", label: "Công cụ đang hoạt động" },
+      { num: "150", label: "Công cụ đang hoạt động" },
       { num: "2025.2026.2027", label: "Phiên bản Revit hỗ trợ" },
       { num: "VI / EN", label: "Giao diện song ngữ" },
       { num: "24h", label: "Thời gian phản hồi hỗ trợ" },
@@ -90,7 +90,7 @@ const DICT = {
         "Chrome may warn you because OneTools is a new app. Click \"Download suspicious file\", or download using a different browser.",
     },
     stats: [
-      { num: "100", label: "Active tools" },
+      { num: "150", label: "Active tools" },
       { num: "2025.2026.2027", label: "Revit version supported" },
       { num: "VI / EN", label: "Bilingual interface" },
       { num: "24h", label: "Support response time" },
@@ -1377,7 +1377,7 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
 
           <div className="ribbon-label mono">Light/Dark Mode</div>
           <div className="hero-ribbon-frame">
-            <img src="/ribbon-lightdark.png" alt="OneTools ribbon trong Autodesk Revit" />
+            <img src="/ribbon-lightdark.png?v=20261111" alt="OneTools ribbon trong Autodesk Revit" />
           </div>
         </div>
       </header>
