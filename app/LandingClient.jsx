@@ -302,6 +302,19 @@ function LangToggle() {
   );
 }
 
+// Định dạng số tiền Paddle trả về ở đơn vị nhỏ nhất (vd cent) sau khi nhân hệ số giảm giá, theo đúng mã
+// tiền tệ của khu vực (vd "$30.33", "£25.20"). Trả null nếu thiếu dữ liệu để nơi gọi tự dùng cách khác.
+function formatPaddleMinor(preview, factor) {
+  if (!preview || !Number.isFinite(preview.minor) || !preview.currency) return null;
+  try {
+    const nf = new Intl.NumberFormat("en-US", { style: "currency", currency: preview.currency });
+    const digits = nf.resolvedOptions().maximumFractionDigits;
+    return nf.format(Math.round(preview.minor * factor) / Math.pow(10, digits));
+  } catch {
+    return null;
+  }
+}
+
 function OneToolsLandingInner({ videos, plans, release, country }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [user, setUser] = useState(null);
@@ -378,9 +391,16 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
       .then((result) => {
         if (cancelled) return;
         const map = {};
+        const currency = result?.data?.currencyCode || null;
         (result?.data?.details?.lineItems || []).forEach((item) => {
           if (item?.price?.id && item?.formattedTotals?.total) {
-            map[item.price.id] = item.formattedTotals.total;
+            // Giữ cả chuỗi Paddle đã định dạng (để hiển thị) lẫn số tiền gốc ở đơn vị nhỏ nhất + mã tiền tệ
+            // (để tự tính giá sau giảm khi có mã giảm giá Paddle - 2026-11-16).
+            map[item.price.id] = {
+              text: item.formattedTotals.total,
+              minor: Number(item?.totals?.total),
+              currency,
+            };
           }
         });
         setPreviewByPriceId(map);
@@ -414,16 +434,29 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
     const paddlePriceId = p.paddle_price_id || null;
     // Giá đã quy đổi theo khu vực do Paddle trả về (VD: "£31.00" cho khách UK) — CHỈ hiện khi có
     // sẵn (đã gọi PricePreview thành công), nếu không vẫn dùng giá tĩnh price/price_usd như cũ.
-    const localizedPrice = paddlePriceId ? previewByPriceId[paddlePriceId] : null;
+    const preview = paddlePriceId ? previewByPriceId[paddlePriceId] : null;
+    const localizedPrice = preview?.text || null;
 
     // Giá cũ/mới khi có khuyến mại đang chạy (yêu cầu user 2026-10-26: hiện ngay trên thẻ gói, không
     // chỉ ở bước chọn PayOS/Paddle). CHỈ bỏ qua khi ĐANG Ở TIẾNG ANH và dùng localizedPrice (giá quy
     // đổi theo khu vực của Paddle, dạng chuỗi có ký hiệu tiền tệ riêng — không parse số an toàn được) —
     // ở tiếng Việt luôn dùng p.price (VNĐ) nên localizedPrice không liên quan, KHÔNG được chặn ở đây
     // (bug trước đó: card có paddle_price_id bị mất giá giảm ở VI vì check sai, dù banner vẫn hiện).
+    // SỬA 2026-11-16: tiếng Anh (khách Paddle) chỉ hiện giá giảm khi đợt khuyến mại có mã giảm giá Paddle
+    // (paddle_discount_code) - đúng với số tiền Paddle thật sự trừ. Có giá quy đổi theo khu vực thì tính
+    // giá giảm trên chính giá đó (Paddle giảm theo %, nên tổng gồm VAT cũng giảm đúng tỉ lệ), không thì
+    // dùng giá USD tĩnh. Tiếng Việt (PayOS) giữ nguyên như cũ.
+    const paddlePromo = promo && promo.paddle_discount_code ? promo : null;
     let oldPriceDisplay = null;
     let newPriceDisplay = null;
-    if (promo && !isContact && !(lang === "en" && localizedPrice)) {
+    if (lang === "en" && paddlePromo && !isContact && localizedPrice) {
+      const discountedLocal = formatPaddleMinor(preview, 1 - paddlePromo.discount_percent / 100);
+      if (discountedLocal) {
+        oldPriceDisplay = localizedPrice;
+        newPriceDisplay = discountedLocal;
+      }
+    }
+    if (!newPriceDisplay && !isContact && (lang === "vi" ? promo : paddlePromo)) {
       if (lang === "vi") {
         const vndNum = parseInt((p.price || "").replace(/[^\d]/g, ""), 10);
         if (Number.isFinite(vndNum) && vndNum > 0) {
@@ -434,7 +467,7 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
       } else {
         const usdNum = parseFloat(p.price_usd);
         if (Number.isFinite(usdNum) && usdNum > 0) {
-          const discounted = Math.round(usdNum * (1 - promo.discount_percent / 100) * 100) / 100;
+          const discounted = Math.round(usdNum * (1 - paddlePromo.discount_percent / 100) * 100) / 100;
           oldPriceDisplay = `${currency}${p.price_usd}`;
           newPriceDisplay = `${currency}${discounted}`;
         }
