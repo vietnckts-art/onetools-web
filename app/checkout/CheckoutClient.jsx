@@ -26,7 +26,7 @@ const STR = {
 // với bản nhúng inline ở trang chủ (xem app/LandingClient.jsx) — tránh lặp code 2 nơi. Trang này vẫn
 // cần giữ lại (không xoá) vì luồng redirect-back sau đăng nhập/đăng ký (?redirect=/checkout?id=...)
 // dẫn khách quay lại đúng đây.
-export default function CheckoutClient({ plan }) {
+export default function CheckoutClient({ plan, country }) {
   const { lang, mounted } = useLang();
 
   if (!mounted) return null;
@@ -65,7 +65,7 @@ export default function CheckoutClient({ plan }) {
         <h1 className="checkout-title">{s.title}</h1>
         <div className="checkout-plan-name">{name}</div>
 
-        <PaymentMethodPanel plan={plan} lang={lang} loginHref={loginHref} signupHref={signupHref} />
+        <PaymentMethodPanel plan={plan} lang={lang} country={country} loginHref={loginHref} signupHref={signupHref} />
       </div>
     </div>
   );

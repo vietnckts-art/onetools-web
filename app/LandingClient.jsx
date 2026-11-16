@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, createContext, useContext } from "r
 import Link from "next/link";
 import { supabase } from "../lib/supabaseClient";
 import { getPaddle } from "../lib/paddleClient";
+import { formatPaddleMinor, mapPricePreview } from "../lib/paddlePrice";
 import PaymentMethodPanel from "./checkout/PaymentMethodPanel";
 
 
@@ -302,19 +303,6 @@ function LangToggle() {
   );
 }
 
-// Định dạng số tiền Paddle trả về ở đơn vị nhỏ nhất (vd cent) sau khi nhân hệ số giảm giá, theo đúng mã
-// tiền tệ của khu vực (vd "$30.33", "£25.20"). Trả null nếu thiếu dữ liệu để nơi gọi tự dùng cách khác.
-function formatPaddleMinor(preview, factor) {
-  if (!preview || !Number.isFinite(preview.minor) || !preview.currency) return null;
-  try {
-    const nf = new Intl.NumberFormat("en-US", { style: "currency", currency: preview.currency });
-    const digits = nf.resolvedOptions().maximumFractionDigits;
-    return nf.format(Math.round(preview.minor * factor) / Math.pow(10, digits));
-  } catch {
-    return null;
-  }
-}
-
 function OneToolsLandingInner({ videos, plans, release, country }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [user, setUser] = useState(null);
@@ -390,20 +378,9 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
       )
       .then((result) => {
         if (cancelled) return;
-        const map = {};
-        const currency = result?.data?.currencyCode || null;
-        (result?.data?.details?.lineItems || []).forEach((item) => {
-          if (item?.price?.id && item?.formattedTotals?.total) {
-            // Giữ cả chuỗi Paddle đã định dạng (để hiển thị) lẫn số tiền gốc ở đơn vị nhỏ nhất + mã tiền tệ
-            // (để tự tính giá sau giảm khi có mã giảm giá Paddle - 2026-11-16).
-            map[item.price.id] = {
-              text: item.formattedTotals.total,
-              minor: Number(item?.totals?.total),
-              currency,
-            };
-          }
-        });
-        setPreviewByPriceId(map);
+        // { priceId: { text, minor, currency } } - giữ cả chuỗi Paddle đã định dạng lẫn số tiền gốc để tự
+        // tính giá sau giảm khi có mã giảm giá Paddle (2026-11-16, xem lib/paddlePrice.js).
+        setPreviewByPriceId(mapPricePreview(result));
       })
       .catch((err) => {
         console.error("[Paddle] Không lấy được giá theo khu vực (PricePreview):", err.message);
@@ -1554,6 +1531,7 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
               <PaymentMethodPanel
                 plan={selectedPlan}
                 lang={lang}
+                country={country}
                 loginHref={selectedPlanLoginHref}
                 signupHref={selectedPlanSignupHref}
               />

@@ -12,6 +12,7 @@ import Link from "next/link";
 import { supabase } from "../../lib/supabaseClient";
 import { getPaddle } from "../../lib/paddleClient";
 import { callEdgeFunction } from "../../lib/callEdgeFunction";
+import { formatPaddleMinor, mapPricePreview } from "../../lib/paddlePrice";
 
 const STR = {
   vi: {
@@ -86,7 +87,7 @@ const STR = {
   },
 };
 
-export default function PaymentMethodPanel({ plan, lang, loginHref, signupHref }) {
+export default function PaymentMethodPanel({ plan, lang, country, loginHref, signupHref }) {
   const s = STR[lang] || STR.vi;
   const [user, setUser] = useState(null);
   const [sessionChecked, setSessionChecked] = useState(false);
@@ -134,6 +135,30 @@ export default function PaymentMethodPanel({ plan, lang, loginHref, signupHref }
     })();
   }, []);
 
+  // Giá Paddle quy đổi theo khu vực (đã gồm thuế) - giống hệt giá trên thẻ gói ở trang chủ và tổng tiền
+  // trong popup Paddle (2026-11-16). Lỗi/không có thì cột Paddle dùng giá USD tĩnh như cũ.
+  const [paddlePreview, setPaddlePreview] = useState(null);
+  useEffect(() => {
+    if (!plan?.paddle_price_id) return;
+    let cancelled = false;
+    getPaddle()
+      .then((paddle) =>
+        paddle.PricePreview({
+          items: [{ priceId: plan.paddle_price_id, quantity: 1 }],
+          ...(country ? { address: { countryCode: country } } : {}),
+        })
+      )
+      .then((result) => {
+        if (!cancelled) setPaddlePreview(mapPricePreview(result)[plan.paddle_price_id] || null);
+      })
+      .catch((err) => {
+        console.error("[Paddle] Không lấy được giá theo khu vực (PricePreview):", err.message);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [plan?.paddle_price_id, country]);
+
   const parseVnd = (text) => {
     const digits = (text || "").replace(/[^\d]/g, "");
     return digits ? parseInt(digits, 10) : NaN;
@@ -160,6 +185,16 @@ export default function PaymentMethodPanel({ plan, lang, loginHref, signupHref }
   const discountedUsd =
     paddleDiscountPercent != null && Number.isFinite(usdOriginalNum)
       ? Math.round(usdOriginalNum * (1 - paddleDiscountPercent / 100) * 100) / 100
+      : null;
+  // Chuỗi giá hiển thị cột Paddle: ưu tiên giá quy đổi theo khu vực, không có thì "$<price_usd>".
+  const paddleBaseText = paddlePreview?.text || (plan.price_usd ? `$${plan.price_usd}` : null);
+  const paddleDiscountedText =
+    paddleDiscountPercent == null
+      ? null
+      : paddlePreview
+      ? formatPaddleMinor(paddlePreview, 1 - paddleDiscountPercent / 100)
+      : discountedUsd !== null
+      ? `$${discountedUsd}`
       : null;
 
   const applyPromoCode = async () => {
@@ -334,15 +369,15 @@ export default function PaymentMethodPanel({ plan, lang, loginHref, signupHref }
             {plan.paddle_price_id ? (
               <>
                 <div className="pm-price mono">
-                  {!plan.price_usd ? (
+                  {!paddleBaseText ? (
                     "—"
-                  ) : paddleDiscountPercent != null && discountedUsd !== null ? (
+                  ) : paddleDiscountedText ? (
                     <>
-                      <span className="pm-price-old">${plan.price_usd}</span>
-                      <span className="pm-price-new">${discountedUsd}</span>
+                      <span className="pm-price-old">{paddleBaseText}</span>
+                      <span className="pm-price-new">{paddleDiscountedText}</span>
                     </>
                   ) : (
-                    `$${plan.price_usd}`
+                    paddleBaseText
                   )}
                 </div>
 
