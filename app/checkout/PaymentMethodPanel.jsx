@@ -151,11 +151,15 @@ export default function PaymentMethodPanel({ plan, lang, loginHref, signupHref }
     activeDiscountPercent != null && Number.isFinite(vndOriginalNum)
       ? Math.round(vndOriginalNum * (1 - activeDiscountPercent / 100))
       : null;
-  // Giá USD cột Paddle — CHỈ hiển thị tham khảo (user xác nhận 2026-10-26: giá thật qua Paddle tự
-  // cấu hình riêng trong Paddle Dashboard, không bị ràng buộc bởi % này).
+  // Paddle (2026-11-16): chỉ giảm khi đợt khuyến mại tự động có `paddle_discount_code` (admin nhập ở
+  // /admin → Khuyến mại) — web tự gắn mã đó vào Paddle Checkout (startPaddle), Paddle trừ tiền thật.
+  // Mã khuyến mãi cá nhân (promo_codes) hiện CHỈ dùng cho PayOS, nên KHÔNG ảnh hưởng giá cột Paddle.
+  // Giá USD hiển thị ở đây chỉ để tham khảo; số tiền thật do Paddle tính theo Discount trên Paddle.
+  const paddleDiscountCode = promo?.paddle_discount_code?.trim() || null;
+  const paddleDiscountPercent = paddleDiscountCode ? promo.discount_percent : null;
   const discountedUsd =
-    activeDiscountPercent != null && Number.isFinite(usdOriginalNum)
-      ? Math.round(usdOriginalNum * (1 - activeDiscountPercent / 100) * 100) / 100
+    paddleDiscountPercent != null && Number.isFinite(usdOriginalNum)
+      ? Math.round(usdOriginalNum * (1 - paddleDiscountPercent / 100) * 100) / 100
       : null;
 
   const applyPromoCode = async () => {
@@ -222,6 +226,8 @@ export default function PaymentMethodPanel({ plan, lang, loginHref, signupHref }
         items: [{ priceId: plan.paddle_price_id, quantity: 1 }],
         customer: { email: user.email },
         customData: { supabase_user_id: user.id },
+        // Tự áp mã giảm giá Paddle của đợt khuyến mại đang chạy (nếu có) — khách không phải nhập.
+        ...(paddleDiscountCode ? { discountCode: paddleDiscountCode } : {}),
         settings: {
           theme: "light",
           successUrl: `${window.location.origin}/welcome`,
@@ -330,7 +336,7 @@ export default function PaymentMethodPanel({ plan, lang, loginHref, signupHref }
                 <div className="pm-price mono">
                   {!plan.price_usd ? (
                     "—"
-                  ) : activeDiscountPercent != null && discountedUsd !== null ? (
+                  ) : paddleDiscountPercent != null && discountedUsd !== null ? (
                     <>
                       <span className="pm-price-old">${plan.price_usd}</span>
                       <span className="pm-price-new">${discountedUsd}</span>
