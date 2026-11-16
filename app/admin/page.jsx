@@ -45,6 +45,7 @@ const EMPTY_PROMOTION = {
   valid_from: "",
   valid_to: "",
   is_active: true,
+  paddle_discount_code: "",
 };
 
 const EMPTY_PROMO_CODE = {
@@ -473,6 +474,7 @@ function PromotionsManager() {
     ...row,
     subtitle_vi: row.subtitle_vi || "",
     subtitle_en: row.subtitle_en || "",
+    paddle_discount_code: row.paddle_discount_code || "",
     valid_from: (row.valid_from || "").slice(0, 10),
     valid_to: (row.valid_to || "").slice(0, 10),
   });
@@ -519,6 +521,9 @@ function PromotionsManager() {
       valid_from: `${form.valid_from}T00:00:00`,
       valid_to: `${form.valid_to}T23:59:59`,
       is_active: form.is_active,
+      // Mã Discount đã tạo sẵn trên Paddle (Catalog → Discounts, có bật "Checkout discount code").
+      // Có mã thì web tự gắn vào Paddle Checkout trong thời gian đợt này chạy; để trống = Paddle không giảm.
+      paddle_discount_code: form.paddle_discount_code?.trim() || null,
     };
     const { error } =
       editing === "new"
@@ -529,7 +534,9 @@ function PromotionsManager() {
     if (error) {
       setSaveError(
         "Lưu thất bại: " + error.message +
-          (error.message.includes("subtitle")
+          (error.message.includes("paddle_discount_code")
+            ? " — có thể chưa chạy sql/schema_promo_paddle.sql trong Supabase."
+            : error.message.includes("subtitle")
             ? " — có thể chưa chạy sql/schema_promo_v2.sql trong Supabase."
             : error.message.includes("promotions")
             ? " — có thể chưa chạy sql/schema_promotions.sql trong Supabase."
@@ -557,8 +564,9 @@ function PromotionsManager() {
   return (
     <div>
       <p style={{ fontSize: 12.5, color: "#A79E8C", marginTop: -8, marginBottom: 18, maxWidth: 560 }}>
-        Chỉ áp dụng cho khách thanh toán qua PayOS (trong nước) — hiển thị banner ở `/checkout` và trang
-        chủ, đồng thời tự động trừ đúng % này vào giá VNĐ thật khi tạo đơn. Không áp dụng cho Paddle.
+        Hiển thị banner ở `/checkout` và trang chủ. PayOS (trong nước): tự trừ đúng % này vào giá VNĐ thật
+        khi tạo đơn. Paddle (quốc tế): chỉ giảm khi nhập "Mã giảm giá Paddle" — web tự gắn mã đó vào Paddle
+        Checkout, khách không phải nhập.
       </p>
       {editing ? (
         <PromotionForm form={form} setForm={setForm} onSave={save} onCancel={cancel} saving={saving} saveError={saveError} />
@@ -569,7 +577,7 @@ function PromotionsManager() {
       <table className="admin-table">
         <thead>
           <tr>
-            <th>Nội dung (VI)</th><th>Giảm</th><th>Từ ngày</th><th>Đến ngày</th><th>Bật</th><th>Đang chạy</th><th></th>
+            <th>Nội dung (VI)</th><th>Giảm</th><th>Mã Paddle</th><th>Từ ngày</th><th>Đến ngày</th><th>Bật</th><th>Đang chạy</th><th></th>
           </tr>
         </thead>
         <tbody>
@@ -577,6 +585,7 @@ function PromotionsManager() {
             <tr key={r.id}>
               <td>{r.title_vi}</td>
               <td>{r.discount_percent}%</td>
+              <td className="mono">{r.paddle_discount_code || "— (Paddle không giảm)"}</td>
               <td>{new Date(r.valid_from).toLocaleDateString("vi-VN")}</td>
               <td>{new Date(r.valid_to).toLocaleDateString("vi-VN")}</td>
               <td>{r.is_active ? "✓" : "—"}</td>
@@ -602,6 +611,10 @@ function PromotionForm({ form, setForm, onSave, onCancel, saving, saveError }) {
       <div className="form-row"><label>Dòng phụ (VI) — không bắt buộc, chữ nhỏ màu vàng, vd thời gian áp dụng</label><input value={form.subtitle_vi} onChange={set("subtitle_vi")} placeholder="vd: (từ ngày 26/10/2026 đến 01/12/2026)" /></div>
       <div className="form-row"><label>Dòng phụ (EN) — không bắt buộc, chữ nhỏ màu vàng</label><input value={form.subtitle_en} onChange={set("subtitle_en")} placeholder="e.g. (from Oct 26 to Dec 1, 2026)" /></div>
       <div className="form-row"><label>% giảm giá</label><input type="number" min="1" max="100" value={form.discount_percent} onChange={set("discount_percent")} /></div>
+      <div className="form-row">
+        <label>Mã giảm giá Paddle — không bắt buộc. Nhập đúng "Checkout discount code" đã tạo trên Paddle (Catalog → Discounts), cùng % ở trên và hạn dùng trên Paddle không sớm hơn "Đến ngày". Để trống = khách Paddle trả giá gốc.</label>
+        <input value={form.paddle_discount_code} onChange={set("paddle_discount_code")} placeholder="vd: ONETOOLS30" />
+      </div>
       <div className="form-row"><label>Từ ngày</label><input type="date" value={form.valid_from} onChange={set("valid_from")} /></div>
       <div className="form-row"><label>Đến ngày</label><input type="date" value={form.valid_to} onChange={set("valid_to")} /></div>
       <div className="form-row checkbox">
