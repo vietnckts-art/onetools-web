@@ -808,10 +808,27 @@ function ReleasesManager() {
   const [editSaving, setEditSaving] = useState(false);
   const [editMsg, setEditMsg] = useState("");
 
+  // Thống kê theo phiên bản (RPC admin_version_stats - chỉ admin gọi được):
+  //   dl_total / dl_7d = lượt bấm "Tải về" trên web; devices_30d = số máy đang chạy bản đó (30 ngày qua).
+  const [stats, setStats] = useState({});
+  const [statsError, setStatsError] = useState("");
+
   const load = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase.from("releases").select("*").order("published_at", { ascending: false });
+    const [{ data }, statsRes] = await Promise.all([
+      supabase.from("releases").select("*").order("published_at", { ascending: false }),
+      supabase.rpc("admin_version_stats"),
+    ]);
     setRows(data || []);
+    if (statsRes.error) {
+      setStats({});
+      setStatsError("Chưa đọc được thống kê: " + statsRes.error.message);
+    } else {
+      const map = {};
+      for (const r of statsRes.data || []) map[r.ver ?? "__unknown__"] = r;
+      setStats(map);
+      setStatsError("");
+    }
     setLoading(false);
   }, []);
 
@@ -1065,10 +1082,15 @@ function ReleasesManager() {
       {loading ? (
         <p>Đang tải...</p>
       ) : (
+        <>
+        <ReleaseStatsSummary rows={rows} stats={stats} statsError={statsError} />
         <table className="admin-table">
           <thead>
             <tr>
-              <th>Phiên bản</th><th>File</th><th>Dung lượng</th><th>Mới nhất</th><th>Ngày đăng</th><th></th>
+              <th>Phiên bản</th><th>File</th><th>Dung lượng</th><th>Mới nhất</th><th>Ngày đăng</th>
+              <th title="Số lượt bấm nút Tải về trên web (tổng / 7 ngày qua)">Lượt tải web</th>
+              <th title="Số máy đang chạy phiên bản này, có mở OneTools trong 30 ngày qua">Máy đang dùng</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -1079,6 +1101,11 @@ function ReleasesManager() {
                 <td>{r.file_size_mb} MB</td>
                 <td>{r.is_latest ? "✓" : "—"}</td>
                 <td>{new Date(r.published_at).toLocaleDateString("vi-VN")}</td>
+                <td>
+                  {Number(stats[r.version]?.dl_total ?? 0)}
+                  <span style={{ opacity: 0.55, fontSize: 12 }}> / {Number(stats[r.version]?.dl_7d ?? 0)} (7 ngày)</span>
+                </td>
+                <td>{Number(stats[r.version]?.devices_30d ?? 0)}</td>
                 <td className="actions">
                   <button onClick={() => startEdit(r)}>Sửa</button>
                   {!r.is_latest && <button onClick={() => markLatest(r.id)}>Đặt làm mới nhất</button>}
@@ -1088,6 +1115,37 @@ function ReleasesManager() {
             ))}
           </tbody>
         </table>
+        </>
+      )}
+    </div>
+  );
+}
+
+// Dòng tóm tắt phía trên bảng phiên bản: tổng lượt tải web, tổng máy hoạt động 30 ngày,
+// số máy chưa rõ phiên bản (chưa mở Revit kể từ khi bắt đầu ghi phiên bản) và các phiên bản
+// đang có máy dùng nhưng không còn trong danh sách phát hành (vd bản DEV/bản đã xoá).
+function ReleaseStatsSummary({ rows, stats, statsError }) {
+  if (statsError) {
+    return <p style={{ fontSize: 13, color: "#E08080", margin: "4px 0 12px" }}>{statsError}</p>;
+  }
+  const all = Object.values(stats);
+  const totalDl = all.reduce((n, r) => n + Number(r.dl_total || 0), 0);
+  const totalDl7 = all.reduce((n, r) => n + Number(r.dl_7d || 0), 0);
+  const totalDevices = all.reduce((n, r) => n + Number(r.devices_30d || 0), 0);
+  const unknown = Number(stats.__unknown__?.devices_30d || 0);
+  const known = new Set(rows.map((r) => r.version));
+  const others = all.filter((r) => r.ver && !known.has(r.ver) && Number(r.devices_30d || 0) > 0);
+
+  return (
+    <div style={{ fontSize: 13, margin: "4px 0 14px", lineHeight: 1.7, opacity: 0.9 }}>
+      <div>
+        Lượt tải web: <b>{totalDl}</b> (7 ngày qua: <b>{totalDl7}</b>) · Máy hoạt động 30 ngày: <b>{totalDevices}</b>
+        {unknown > 0 && <> · Chưa rõ phiên bản: <b>{unknown}</b></>}
+      </div>
+      {others.length > 0 && (
+        <div style={{ opacity: 0.75 }}>
+          Phiên bản khác đang dùng: {others.map((r) => `${r.ver} (${Number(r.devices_30d)} máy)`).join(", ")}
+        </div>
       )}
     </div>
   );

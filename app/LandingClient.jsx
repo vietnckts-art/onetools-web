@@ -1330,7 +1330,16 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
                 </div>
               </div>
               {release ? (
-                <a className="download-btn" href={release.download_url}>
+                <a
+                  className="download-btn"
+                  href={release.download_url}
+                  onClick={() => {
+                    // Ghi 1 lượt tải để thống kê trong /admin (không chặn việc tải nếu lỗi).
+                    supabase
+                      .rpc("log_download", { p_version: release.version, p_source: "web" })
+                      .then(() => {}, () => {});
+                  }}
+                >
                   {t.download.btn}
                   <span className="download-btn-arrow">↓</span>
                 </a>
