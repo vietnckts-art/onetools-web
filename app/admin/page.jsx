@@ -165,7 +165,7 @@ export default function AdminPage() {
 
 function CenterMsg({ text }) {
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#161512", color: "#F3EFE6", fontFamily: "sans-serif", padding: 24, textAlign: "center" }}>
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F4F2EE", color: "#222", fontFamily: "sans-serif", padding: 24, textAlign: "center" }}>
       {text}
     </div>
   );
@@ -448,7 +448,7 @@ function PlanForm({ form, setForm, onSave, onCancel, saving, saveError }) {
         <button className="btn-primary" onClick={onSave} disabled={saving}>{saving ? "Đang lưu..." : "Lưu"}</button>
         <button className="btn-ghost" onClick={onCancel}>Huỷ</button>
       </div>
-      {saveError && <p style={{ color: "#E08080", fontSize: 12.5, marginTop: 10 }}>{saveError}</p>}
+      {saveError && <p style={{ color: "#C0392B", fontSize: 12.5, marginTop: 10 }}>{saveError}</p>}
     </div>
   );
 }
@@ -567,7 +567,7 @@ function PromotionsManager() {
 
   return (
     <div>
-      <p style={{ fontSize: 12.5, color: "#A79E8C", marginTop: -8, marginBottom: 18, maxWidth: 560 }}>
+      <p style={{ fontSize: 12.5, color: "#6B6558", marginTop: -8, marginBottom: 18, maxWidth: 560 }}>
         Hiển thị banner ở `/checkout` và trang chủ. PayOS (trong nước): tự trừ đúng % này vào giá VNĐ thật
         khi tạo đơn. Paddle (quốc tế): chỉ giảm khi nhập "Mã giảm giá Paddle" — web tự gắn mã đó vào Paddle
         Checkout, khách không phải nhập.
@@ -628,7 +628,7 @@ function PromotionForm({ form, setForm, onSave, onCancel, saving, saveError }) {
         <button className="btn-primary" onClick={onSave} disabled={saving}>{saving ? "Đang lưu..." : "Lưu"}</button>
         <button className="btn-ghost" onClick={onCancel}>Huỷ</button>
       </div>
-      {saveError && <p style={{ color: "#E08080", fontSize: 12.5, marginTop: 10 }}>{saveError}</p>}
+      {saveError && <p style={{ color: "#C0392B", fontSize: 12.5, marginTop: 10 }}>{saveError}</p>}
     </div>
   );
 }
@@ -733,7 +733,7 @@ function PromoCodesManager() {
 
   return (
     <div>
-      <p style={{ fontSize: 12.5, color: "#A79E8C", marginTop: -8, marginBottom: 18, maxWidth: 620 }}>
+      <p style={{ fontSize: 12.5, color: "#6B6558", marginTop: -8, marginBottom: 18, maxWidth: 620 }}>
         Mã tặng riêng cho cá nhân — khách nhập ở ô "Mã khuyến mãi" trong bước thanh toán. Nếu áp thành
         công, mã này THAY THẾ hoàn toàn % của đợt khuyến mại tự động (tab "Khuyến mại"), không cộng dồn.
         Giá thật chỉ bị trừ ở kênh PayOS — Paddle chỉ hiển thị tham khảo, giống tab "Khuyến mại".
@@ -794,7 +794,7 @@ function PromoCodeForm({ form, setForm, onSave, onCancel, saving, saveError }) {
         <button className="btn-primary" onClick={onSave} disabled={saving}>{saving ? "Đang lưu..." : "Lưu"}</button>
         <button className="btn-ghost" onClick={onCancel}>Huỷ</button>
       </div>
-      {saveError && <p style={{ color: "#E08080", fontSize: 12.5, marginTop: 10 }}>{saveError}</p>}
+      {saveError && <p style={{ color: "#C0392B", fontSize: 12.5, marginTop: 10 }}>{saveError}</p>}
     </div>
   );
 }
@@ -1261,7 +1261,7 @@ function ReleasesManager() {
             {uploading ? "Đang xử lý..." : "Tải lên & Đăng"}
           </button>
         </div>
-        {uploadMsg && <p style={{ fontSize: 13, marginTop: 10, color: "#C9A15F" }}>{uploadMsg}</p>}
+        {uploadMsg && <p style={{ fontSize: 13, marginTop: 10, color: "#A06C28" }}>{uploadMsg}</p>}
       </div>
 
       {editingId && (
@@ -1271,7 +1271,7 @@ function ReleasesManager() {
           </h3>
           <div className="form-row">
             <label>File hiện tại</label>
-            <p style={{ margin: 0, fontSize: 13, color: "#A79E8C" }} className="mono">
+            <p style={{ margin: 0, fontSize: 13, color: "#6B6558" }} className="mono">
               {rows.find((r) => r.id === editingId)?.file_name}
             </p>
           </div>
@@ -1323,7 +1323,7 @@ function ReleasesManager() {
             </button>
             <button className="btn-ghost" onClick={cancelEdit}>Huỷ</button>
           </div>
-          {editMsg && <p style={{ fontSize: 13, marginTop: 10, color: "#E08080" }}>{editMsg}</p>}
+          {editMsg && <p style={{ fontSize: 13, marginTop: 10, color: "#C0392B" }}>{editMsg}</p>}
         </div>
       )}
 
@@ -1378,7 +1378,7 @@ function ReleasesManager() {
 // đang có máy dùng nhưng không còn trong danh sách phát hành (vd bản DEV/bản đã xoá).
 function ReleaseStatsSummary({ rows, stats, statsError }) {
   if (statsError) {
-    return <p style={{ fontSize: 13, color: "#E08080", margin: "4px 0 12px" }}>{statsError}</p>;
+    return <p style={{ fontSize: 13, color: "#C0392B", margin: "4px 0 12px" }}>{statsError}</p>;
   }
   const all = Object.values(stats);
   const totalDl = all.reduce((n, r) => n + Number(r.dl_total || 0), 0);
@@ -1465,9 +1465,9 @@ function ReplyBox({ feedback }) {
         style={{
           width: "100%",
           padding: 7,
-          background: "#161512",
-          border: "1px solid #37342C",
-          color: "#F3EFE6",
+          background: "#FFFFFF",
+          border: "1px solid #D9D5CC",
+          color: "#222",
           fontSize: 12.5,
           boxSizing: "border-box",
           marginBottom: 6,
@@ -1480,8 +1480,8 @@ function ReplyBox({ feedback }) {
           style={{
             fontSize: 11.5,
             padding: "5px 10px",
-            border: "1px solid #37342C",
-            color: "#F3EFE6",
+            border: "1px solid #D9D5CC",
+            color: "#222",
             textDecoration: "none",
           }}
         >
@@ -1493,8 +1493,8 @@ function ReplyBox({ feedback }) {
           style={{
             fontSize: 11.5,
             padding: "5px 10px",
-            background: "#C9A15F",
-            color: "#161512",
+            background: "#B98236",
+            color: "#FFFFFF",
             border: "none",
             cursor: "pointer",
           }}
@@ -1502,8 +1502,8 @@ function ReplyBox({ feedback }) {
           {status === "sending" ? "Đang gửi..." : "Gửi qua hệ thống"}
         </button>
       </div>
-      {status === "sent" && <p style={{ color: "#7FBF7F", fontSize: 11.5, marginTop: 4 }}>Đã gửi.</p>}
-      {status === "error" && <p style={{ color: "#E08080", fontSize: 11.5, marginTop: 4 }}>{errorMsg}</p>}
+      {status === "sent" && <p style={{ color: "#2E8B57", fontSize: 11.5, marginTop: 4 }}>Đã gửi.</p>}
+      {status === "error" && <p style={{ color: "#C0392B", fontSize: 11.5, marginTop: 4 }}>{errorMsg}</p>}
     </div>
   );
 }
@@ -1553,11 +1553,11 @@ function FeedbackManager() {
   }, [load]);
 
   if (loading) return <p>Đang tải...</p>;
-  if (errorMsg) return <p style={{ color: "#E08080", fontSize: 13 }}>{errorMsg}</p>;
+  if (errorMsg) return <p style={{ color: "#C0392B", fontSize: 13 }}>{errorMsg}</p>;
 
   return (
     <div>
-      {rows.length === 0 && <p style={{ color: "#A79E8C", fontSize: 13 }}>Chưa có phản hồi nào.</p>}
+      {rows.length === 0 && <p style={{ color: "#6B6558", fontSize: 13 }}>Chưa có phản hồi nào.</p>}
 
       <table className="admin-table">
         <thead>
@@ -1576,7 +1576,7 @@ function FeedbackManager() {
               <td className="mono">{r.license_key}</td>
               <td>
                 <div>{r.sender_email}</div>
-                <div style={{ color: "#A79E8C", fontSize: 12 }}>{r.sender_phone}</div>
+                <div style={{ color: "#6B6558", fontSize: 12 }}>{r.sender_phone}</div>
               </td>
               <td style={{ maxWidth: 320 }}>{r.message}</td>
               <td className="mono">{r.app_version}</td>
@@ -1585,13 +1585,13 @@ function FeedbackManager() {
                   <img
                     src={r.imageUrl}
                     alt="Ảnh đính kèm"
-                    style={{ width: 64, height: 64, objectFit: "cover", cursor: "pointer", border: "1px solid #37342C" }}
+                    style={{ width: 64, height: 64, objectFit: "cover", cursor: "pointer", border: "1px solid #D9D5CC" }}
                     onClick={() => setLightboxUrl(r.imageUrl)}
                   />
                 ) : r.image_path ? (
-                  <span style={{ color: "#E08080", fontSize: 12 }}>Lỗi tải ảnh</span>
+                  <span style={{ color: "#C0392B", fontSize: 12 }}>Lỗi tải ảnh</span>
                 ) : (
-                  <span style={{ color: "#A79E8C", fontSize: 12 }}>—</span>
+                  <span style={{ color: "#6B6558", fontSize: 12 }}>—</span>
                 )}
               </td>
               <td style={{ minWidth: 220 }}>
@@ -1625,74 +1625,85 @@ function FeedbackManager() {
 }
 
 const adminStyles = `
-  .admin-root { min-height: 100vh; background: #161512; color: #F3EFE6; font-family: -apple-system, sans-serif; font-size: 15px; }
-  /* ĐỔI (2026-11-23): mọi tab căn giữa trang, rộng tối đa 1200px, chữ to hơn. Viền ngang vẫn tràn hết chiều rộng. */
-  .admin-header { display: flex; justify-content: space-between; align-items: center; padding: 22px max(32px, calc((100% - 1200px) / 2)); border-bottom: 1px solid #37342C; }
-  .admin-header h1 { font-size: 21px; margin: 0; }
-  .admin-tabs { display: flex; gap: 4px; padding: 0 max(32px, calc((100% - 1200px) / 2)); border-bottom: 1px solid #37342C; flex-wrap: wrap; }
-  .admin-tabs button { padding: 14px 20px; background: transparent; border: none; color: #A79E8C; cursor: pointer; font-size: 15.5px; border-bottom: 2px solid transparent; }
-  .admin-tabs button.active { color: #C9A15F; border-bottom-color: #C9A15F; }
+  /* ĐỔI (2026-11-23): giao diện SÁNG cho dễ nhìn. Bảng màu:
+     nền trang #F4F2EE · thẻ/bảng trắng · tiêu đề bảng #ECE9E3 · dòng xen kẽ #F8F7F4 · viền #D9D5CC
+     chữ #222 · chữ phụ #6B6558 · chữ mờ #8A8478 · nhấn (đồng) #A06C28 · nút chính nền #B98236 chữ trắng. */
+  .admin-root { min-height: 100vh; background: #F4F2EE; color: #222; font-family: -apple-system, "Segoe UI", sans-serif; font-size: 15px; }
+  /* mọi tab căn giữa trang, rộng tối đa 1200px; viền ngang vẫn tràn hết chiều rộng. */
+  .admin-header { display: flex; justify-content: space-between; align-items: center; padding: 22px max(32px, calc((100% - 1200px) / 2)); background: #FFFFFF; border-bottom: 1px solid #E8E5DF; }
+  .admin-header h1 { font-size: 21px; margin: 0; color: #222; }
+  .admin-tabs { display: flex; gap: 4px; padding: 0 max(32px, calc((100% - 1200px) / 2)); background: #FFFFFF; border-bottom: 1px solid #D9D5CC; flex-wrap: wrap; }
+  .admin-tabs button { padding: 14px 20px; background: transparent; border: none; color: #6B6558; cursor: pointer; font-size: 15.5px; border-bottom: 3px solid transparent; }
+  .admin-tabs button:hover { color: #222; }
+  .admin-tabs button.active { color: #A06C28; border-bottom-color: #B98236; font-weight: 600; }
   .admin-main { padding: 32px 32px 60px; max-width: 1200px; margin: 0 auto; box-sizing: border-box; }
-  .btn-primary { background: #C9A15F; color: #161512; border: none; padding: 11px 20px; font-weight: 600; cursor: pointer; font-size: 14.5px; margin-bottom: 20px; }
-  .btn-ghost { background: transparent; color: #F3EFE6; border: 1px solid #37342C; padding: 11px 20px; cursor: pointer; font-size: 14.5px; }
-  .admin-table { width: 100%; border-collapse: collapse; font-size: 15px; margin-top: 8px; }
-  .admin-table th { text-align: left; padding: 12px; border-bottom: 1px solid #37342C; color: #A79E8C; font-weight: 500; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; }
-  .admin-table td { padding: 12px; border-bottom: 1px solid #2A2822; }
-  .admin-table .mono { font-family: monospace; color: #A79E8C; }
+  .btn-primary { background: #B98236; color: #FFFFFF; border: none; padding: 11px 20px; font-weight: 600; cursor: pointer; font-size: 14.5px; margin-bottom: 20px; border-radius: 4px; }
+  .btn-primary:hover { background: #A06C28; }
+  .btn-primary:disabled { opacity: 0.6; cursor: default; }
+  .btn-ghost { background: #FFFFFF; color: #222; border: 1px solid #D9D5CC; padding: 11px 20px; cursor: pointer; font-size: 14.5px; border-radius: 4px; }
+  .btn-ghost:hover { background: #F1EEE8; }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 15px; margin-top: 8px; background: #FFFFFF; border: 1px solid #D9D5CC; }
+  .admin-table th { text-align: left; padding: 12px; background: #ECE9E3; border-bottom: 1px solid #D9D5CC; color: #6B6558; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .admin-table td { padding: 12px; border-bottom: 1px solid #E8E5DF; }
+  .admin-table tbody tr:nth-child(even) td { background: #F8F7F4; }
+  .admin-table tbody tr:hover td { background: #F1EEE8; }
+  .admin-table .mono { font-family: monospace; color: #6B6558; }
   .admin-table .actions { display: flex; gap: 8px; }
-  .admin-table .actions button { background: transparent; border: 1px solid #37342C; color: #F3EFE6; padding: 5px 10px; cursor: pointer; font-size: 13.5px; }
-  .admin-table .actions button.danger { color: #E08080; border-color: #4a2c2c; }
-  .admin-form { border: 1px solid #37342C; background: #1F1D19; padding: 24px; margin-bottom: 24px; }
+  .admin-table .actions button { background: #FFFFFF; border: 1px solid #D9D5CC; color: #222; padding: 5px 10px; cursor: pointer; font-size: 13.5px; border-radius: 4px; }
+  .admin-table .actions button:hover { background: #F1EEE8; }
+  .admin-table .actions button.danger { color: #C0392B; border-color: #E9C3BE; }
+  .admin-form { border: 1px solid #D9D5CC; background: #FFFFFF; padding: 24px; margin-bottom: 24px; border-radius: 6px; }
   .form-row { margin-bottom: 14px; }
-  .form-row label { display: block; font-size: 13.5px; color: #A79E8C; margin-bottom: 6px; }
-  .form-row input, .form-row textarea { width: 100%; padding: 9px 11px; background: #161512; border: 1px solid #37342C; color: #F3EFE6; font-size: 15px; box-sizing: border-box; font-family: inherit; }
+  .form-row label { display: block; font-size: 13.5px; color: #6B6558; margin-bottom: 6px; }
+  .form-row input, .form-row textarea { width: 100%; padding: 9px 11px; background: #FFFFFF; border: 1px solid #D9D5CC; color: #222; font-size: 15px; box-sizing: border-box; font-family: inherit; border-radius: 4px; }
+  .form-row input:focus, .form-row textarea:focus { outline: none; border-color: #B98236; box-shadow: 0 0 0 2px rgba(185,130,54,0.18); }
   .form-row textarea { resize: vertical; min-height: 60px; }
-  .form-row.checkbox label { display: flex; align-items: center; gap: 8px; font-size: 14.5px; color: #F3EFE6; }
+  .form-row.checkbox label { display: flex; align-items: center; gap: 8px; font-size: 14.5px; color: #222; }
   .form-row.checkbox input { width: auto; }
   .form-actions { display: flex; gap: 10px; margin-top: 18px; }
-  .acq-muted { color: #8E8676; font-size: 14px; }
+  .acq-muted { color: #8A8478; font-size: 14px; }
   .acq-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
-  .acq-seg { display: inline-flex; border: 1px solid #37342C; }
-  .acq-seg button { background: transparent; color: #CFC7B6; border: none; border-right: 1px solid #37342C; padding: 9px 18px; font-size: 14.5px; cursor: pointer; }
+  .acq-seg { display: inline-flex; border: 1px solid #D9D5CC; background: #FFFFFF; border-radius: 4px; overflow: hidden; }
+  .acq-seg button { background: transparent; color: #444; border: none; border-right: 1px solid #D9D5CC; padding: 9px 18px; font-size: 14.5px; cursor: pointer; }
   .acq-seg button:last-child { border-right: none; }
-  .acq-seg button.on { background: #C9A15F; color: #161512; font-weight: 600; }
-  .acq-btn { background: #24221D; color: #F3EFE6; border: 1px solid #37342C; padding: 9px 18px; font-size: 14.5px; cursor: pointer; }
-  .acq-btn:hover { background: #2E2B25; }
-  .acq-check { display: inline-flex; align-items: center; gap: 6px; font-size: 14.5px; color: #CFC7B6; margin-left: auto; cursor: pointer; }
-  .acq-error { font-size: 13px; color: #E08080; }
+  .acq-seg button.on { background: #B98236; color: #FFFFFF; font-weight: 600; }
+  .acq-btn { background: #FFFFFF; color: #222; border: 1px solid #D9D5CC; padding: 9px 18px; font-size: 14.5px; cursor: pointer; border-radius: 4px; }
+  .acq-btn:hover { background: #F1EEE8; }
+  .acq-check { display: inline-flex; align-items: center; gap: 6px; font-size: 14.5px; color: #444; margin-left: auto; cursor: pointer; }
+  .acq-error { font-size: 13px; color: #C0392B; }
   .acq-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 8px; }
-  .acq-kpi { background: #24221D; border: 1px solid #37342C; border-left: 4px solid #C9A15F; padding: 18px 20px; }
-  .acq-kpi-label { font-size: 13px; color: #A79E8C; text-transform: uppercase; letter-spacing: 0.05em; }
-  .acq-kpi-value { font-size: 36px; font-weight: 700; margin: 4px 0 2px; color: #F3EFE6; }
-  .acq-kpi-sub { font-size: 13px; color: #8E8676; }
-  .acq-section { margin: 32px 0 12px; font-size: 18px; font-weight: 600; color: #C9A15F; padding-bottom: 6px; border-bottom: 1px solid #37342C; }
+  .acq-kpi { background: #FFFFFF; border: 1px solid #D9D5CC; border-left: 4px solid #B98236; padding: 18px 20px; border-radius: 6px; }
+  .acq-kpi-label { font-size: 13px; color: #6B6558; text-transform: uppercase; letter-spacing: 0.05em; }
+  .acq-kpi-value { font-size: 36px; font-weight: 700; margin: 4px 0 2px; color: #222; }
+  .acq-kpi-sub { font-size: 13px; color: #8A8478; }
+  .acq-section { margin: 32px 0 12px; font-size: 18px; font-weight: 600; color: #A06C28; padding-bottom: 6px; border-bottom: 1px solid #D9D5CC; }
   .acq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-  .acq-card { background: #1F1D19; border: 1px solid #37342C; overflow: hidden; }
-  .acq-card-head { display: flex; justify-content: space-between; align-items: center; background: #2B2924; padding: 12px 16px; font-weight: 600; font-size: 15.5px; }
-  .acq-card-total { font-weight: 400; font-size: 13.5px; color: #A79E8C; }
-  .acq-card-note { font-size: 13px; color: #8E8676; padding: 8px 16px 0; }
+  .acq-card { background: #FFFFFF; border: 1px solid #D9D5CC; overflow: hidden; border-radius: 6px; }
+  .acq-card-head { display: flex; justify-content: space-between; align-items: center; background: #ECE9E3; padding: 12px 16px; font-weight: 600; font-size: 15.5px; color: #222; }
+  .acq-card-total { font-weight: 400; font-size: 13.5px; color: #6B6558; }
+  .acq-card-note { font-size: 13px; color: #8A8478; padding: 8px 16px 0; }
   .acq-table { width: 100%; border-collapse: collapse; font-size: 15px; }
-  .acq-table td { padding: 11px 16px; border-top: 1px solid #2A2822; vertical-align: middle; }
-  .acq-table tbody tr:nth-child(even) td { background: #24221D; }
-  .acq-table tbody tr:hover td { background: #2E2B25; }
-  .acq-table th { text-align: left; padding: 11px 16px; background: #2B2924; color: #A79E8C; font-weight: 500; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .acq-table td { padding: 11px 16px; border-top: 1px solid #E8E5DF; vertical-align: middle; }
+  .acq-table tbody tr:nth-child(even) td { background: #F8F7F4; }
+  .acq-table tbody tr:hover td { background: #F1EEE8; }
+  .acq-table th { text-align: left; padding: 11px 16px; background: #ECE9E3; color: #6B6558; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; }
   .acq-label { width: 100%; }
-  .acq-bar { height: 5px; background: #2E2B25; margin-top: 6px; }
-  .acq-bar > div { height: 100%; background: #C9A15F; opacity: 0.75; }
+  .acq-bar { height: 5px; background: #ECE9E3; margin-top: 6px; border-radius: 3px; overflow: hidden; }
+  .acq-bar > div { height: 100%; background: #B98236; }
   .acq-num { text-align: right; font-weight: 600; width: 60px; }
-  .acq-pct { text-align: right; width: 60px; color: #8E8676; font-size: 14px; }
-  .acq-unknown td { color: #8E8676; font-style: italic; }
-  .acq-unknown .acq-bar > div { background: #5A5548; }
-  .acq-empty { color: #8E8676; text-align: center; padding: 16px !important; }
-  .acq-mono { font-family: monospace; color: #CFC7B6; font-size: 14px; }
-  .acq-small { font-size: 13.5px; color: #A79E8C; }
+  .acq-pct { text-align: right; width: 60px; color: #8A8478; font-size: 14px; }
+  .acq-unknown td { color: #8A8478; font-style: italic; }
+  .acq-unknown .acq-bar > div { background: #C8C3B8; }
+  .acq-empty { color: #8A8478; text-align: center; padding: 16px !important; }
+  .acq-mono { font-family: monospace; color: #444; font-size: 14px; }
+  .acq-small { font-size: 13.5px; color: #6B6558; }
   .acq-nowrap { white-space: nowrap; }
-  .acq-tag { display: inline-block; padding: 3px 10px; font-size: 13.5px; border: 1px solid #37342C; background: #2B2924; }
-  .acq-tag.web { color: #8FC1E8; border-color: #2D4558; background: #1C2731; }
-  .acq-tag.addin { color: #C9A15F; border-color: #4D3F27; background: #2A2318; }
-  .acq-tag.src { color: #9ED6A5; border-color: #2F4A33; background: #1B2A1D; }
-  .acq-help { margin-top: 26px; font-size: 14px; color: #8E8676; }
+  .acq-tag { display: inline-block; padding: 3px 10px; font-size: 13.5px; border: 1px solid #D9D5CC; background: #F4F2EE; border-radius: 10px; }
+  .acq-tag.web { color: #1F5F8B; border-color: #B9D3E6; background: #EAF3FA; }
+  .acq-tag.addin { color: #8A5A1C; border-color: #E6CFA8; background: #FBF3E6; }
+  .acq-tag.src { color: #2E6B37; border-color: #BFDDC3; background: #ECF6EE; }
+  .acq-help { margin-top: 26px; font-size: 14px; color: #6B6558; }
   .acq-help summary { cursor: pointer; }
-  .acq-help div { margin-top: 8px; line-height: 1.8; padding: 10px 14px; background: #1F1D19; border: 1px solid #2A2822; }
+  .acq-help div { margin-top: 8px; line-height: 1.8; padding: 10px 14px; background: #FFFFFF; border: 1px solid #E8E5DF; border-radius: 6px; }
   @media (max-width: 760px) { .acq-grid, .acq-kpis { grid-template-columns: 1fr; } }
 `;
