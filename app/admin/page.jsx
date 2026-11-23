@@ -829,26 +829,36 @@ function countBy(rows, keyFn) {
   return [...m.entries()].sort((a, b) => b[1] - a[1]);
 }
 
-function CountTable({ title, rows, isCountry, note }) {
+// ĐỔI (2026-11-23, user: "rối quá"): bảng dạng thẻ có tiêu đề nền xám, dòng xen kẽ màu, thanh % trực quan;
+// ô tổng số dạng thẻ lớn; tuỳ chọn ẩn lượt "(chưa rõ)" (lượt tải trước khi có theo dõi nguồn).
+function CountTable({ title, rows, isCountry, note, unit = "lượt" }) {
   const total = rows.reduce((n, r) => n + r[1], 0);
+  const max = rows.reduce((m, r) => Math.max(m, r[1]), 0);
   return (
-    <div style={{ flex: "1 1 280px", minWidth: 260 }}>
-      <h4 style={{ margin: "18px 0 4px" }}>{title}</h4>
-      {note && <p style={{ fontSize: 12, opacity: 0.6, margin: "0 0 4px" }}>{note}</p>}
-      <table className="admin-table">
+    <div className="acq-card">
+      <div className="acq-card-head">
+        <span>{title}</span>
+        <span className="acq-card-total">{total} {unit}</span>
+      </div>
+      {note && <div className="acq-card-note">{note}</div>}
+      <table className="acq-table">
         <tbody>
           {rows.length === 0 && (
-            <tr><td style={{ opacity: 0.6 }}>Chưa có dữ liệu</td></tr>
+            <tr><td className="acq-empty" colSpan={3}>Chưa có dữ liệu</td></tr>
           )}
-          {rows.map(([k, n]) => (
-            <tr key={k}>
-              <td>{isCountry ? countryLabel(k) : k}</td>
-              <td style={{ textAlign: "right", width: 60 }}>{n}</td>
-              <td style={{ textAlign: "right", width: 60, opacity: 0.6 }}>
-                {total ? Math.round((n * 100) / total) + "%" : ""}
-              </td>
-            </tr>
-          ))}
+          {rows.map(([k, n]) => {
+            const pct = total ? Math.round((n * 100) / total) : 0;
+            return (
+              <tr key={k} className={k === UNKNOWN ? "acq-unknown" : ""}>
+                <td className="acq-label">
+                  <div>{isCountry ? countryLabel(k) : k}</div>
+                  <div className="acq-bar"><div style={{ width: (max ? (n * 100) / max : 0) + "%" }} /></div>
+                </td>
+                <td className="acq-num">{n}</td>
+                <td className="acq-pct">{pct}%</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -861,6 +871,7 @@ function AcquisitionManager() {
   const [signups, setSignups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [hideUnknown, setHideUnknown] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -897,70 +908,111 @@ function AcquisitionManager() {
   const signupSource = (r) => r.utm_source || (r.via === "addin" ? "trong Revit (không rõ quảng cáo)" : null);
   const sourceLabel = (r) => (r.utm_source ? r.utm_source + (r.utm_campaign ? " · " + r.utm_campaign : "") : null);
 
+  // Lượt tải chưa có theo dõi (trước 23/11/2026): không có cả nguồn lẫn quốc gia.
+  const untracked = downloads.filter((r) => !r.utm_source && !r.country).length;
+  const dlRows = hideUnknown ? downloads.filter((r) => r.utm_source || r.country) : downloads;
+  const strip = (rows) => (hideUnknown ? rows.filter(([k]) => k !== UNKNOWN) : rows);
+  const tracked = downloads.length - untracked;
+  const rate = tracked ? Math.round((signups.length * 1000) / tracked) / 10 : null;
+
   return (
-    <div>
-      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <span>Khoảng thời gian:</span>
-        {[7, 30, 90].map((d) => (
-          <button key={d} className={days === d ? "btn-primary" : "btn-ghost"} onClick={() => setDays(d)}>
-            {d} ngày
-          </button>
-        ))}
-        <button className="btn-ghost" onClick={load}>Tải lại</button>
+    <div className="acq">
+      <div className="acq-toolbar">
+        <span className="acq-muted">Khoảng thời gian</span>
+        <div className="acq-seg">
+          {[7, 30, 90].map((d) => (
+            <button key={d} className={days === d ? "on" : ""} onClick={() => setDays(d)}>
+              {d} ngày
+            </button>
+          ))}
+        </div>
+        <button className="acq-btn" onClick={load}>↻ Tải lại</button>
+        <label className="acq-check">
+          <input type="checkbox" checked={hideUnknown} onChange={(e) => setHideUnknown(e.target.checked)} />
+          Ẩn lượt chưa rõ nguồn
+        </label>
       </div>
 
-      {error && <p style={{ fontSize: 13, color: "#E08080" }}>{error}</p>}
-
-      <p style={{ fontSize: 13, opacity: 0.75, marginTop: 12 }}>
-        Gắn UTM vào link quảng cáo để biết khách đến từ đâu, ví dụ YouTube:{" "}
-        <span className="mono">onetools-bim.com/en?utm_source=youtube&amp;utm_campaign=intl-video</span> · Facebook:{" "}
-        <span className="mono">onetools-bim.com/?utm_source=facebook&amp;utm_campaign=vn-fb</span>. Lượt tải trước
-        23/11/2026 không có nguồn/quốc gia.
-      </p>
+      {error && <p className="acq-error">{error}</p>}
 
       {loading ? (
-        <p>Đang tải...</p>
+        <p className="acq-muted">Đang tải...</p>
       ) : (
         <>
-          <p style={{ marginTop: 16 }}>
-            <b>{downloads.length}</b> lượt bấm Tải về · <b>{signups.length}</b> lượt đăng ký Trial ({days} ngày qua)
-          </p>
-
-          <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-            <CountTable title="Lượt tải theo nguồn" rows={countBy(downloads, sourceLabel)} />
-            <CountTable title="Lượt tải theo quốc gia" rows={countBy(downloads, (r) => r.country)} isCountry />
+          <div className="acq-kpis">
+            <div className="acq-kpi">
+              <div className="acq-kpi-label">Lượt bấm Tải về</div>
+              <div className="acq-kpi-value">{downloads.length}</div>
+              <div className="acq-kpi-sub">{tracked} có nguồn · {untracked} chưa rõ</div>
+            </div>
+            <div className="acq-kpi">
+              <div className="acq-kpi-label">Đăng ký Trial</div>
+              <div className="acq-kpi-value">{signups.length}</div>
+              <div className="acq-kpi-sub">{days} ngày qua</div>
+            </div>
+            <div className="acq-kpi">
+              <div className="acq-kpi-label">Đăng ký / lượt tải có nguồn</div>
+              <div className="acq-kpi-value">{rate === null ? "—" : rate + "%"}</div>
+              <div className="acq-kpi-sub">tỉ lệ chuyển đổi ước tính</div>
+            </div>
           </div>
-          <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+
+          <div className="acq-section">Lượt tải về</div>
+          <div className="acq-grid">
+            <CountTable title="Theo nguồn" rows={strip(countBy(dlRows, sourceLabel))} />
+            <CountTable title="Theo quốc gia" rows={strip(countBy(dlRows, (r) => r.country))} isCountry />
+          </div>
+
+          <div className="acq-section">Đăng ký Trial</div>
+          <div className="acq-grid">
+            <CountTable title="Theo nguồn" rows={countBy(signups, signupSource)} />
             <CountTable
-              title="Đăng ký theo quốc gia"
+              title="Theo quốc gia"
               rows={countBy(signups, signupCountry)}
               isCountry
-              note="Đăng ký trên web: theo IP. Đăng ký trong Revit: theo vùng cài trong Windows."
+              note="Đăng ký trên web: theo IP · Đăng ký trong Revit: theo vùng cài trong Windows."
             />
-            <CountTable title="Đăng ký theo nguồn" rows={countBy(signups, signupSource)} />
           </div>
 
-          <h4 style={{ margin: "22px 0 4px" }}>Đăng ký gần đây</h4>
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Thời gian</th><th>Email</th><th>Nơi đăng ký</th><th>Quốc gia</th>
-                <th>Ngôn ngữ / múi giờ Windows</th><th>Nguồn</th>
-              </tr>
-            </thead>
-            <tbody>
-              {signups.slice(0, 50).map((r, i) => (
-                <tr key={i}>
-                  <td>{new Date(r.created_at).toLocaleString("vi-VN")}</td>
-                  <td className="mono">{r.email}</td>
-                  <td>{r.via === "web" ? "Web" : r.via === "addin" ? "Trong Revit" + (r.channel === "store" ? " (Store)" : "") : r.via || "—"}</td>
-                  <td>{signupCountry(r) ? countryLabel(signupCountry(r)) : "—"}</td>
-                  <td style={{ fontSize: 12 }}>{[r.os_language, r.time_zone].filter(Boolean).join(" · ") || "—"}</td>
-                  <td>{sourceLabel(r) || "—"}</td>
+          <div className="acq-section">Đăng ký gần đây</div>
+          <div className="acq-card">
+            <table className="acq-table acq-list">
+              <thead>
+                <tr>
+                  <th>Thời gian</th><th>Email</th><th>Nơi đăng ký</th><th>Quốc gia</th>
+                  <th>Ngôn ngữ / múi giờ</th><th>Nguồn</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {signups.length === 0 && (
+                  <tr><td className="acq-empty" colSpan={6}>Chưa có lượt đăng ký</td></tr>
+                )}
+                {signups.slice(0, 50).map((r, i) => (
+                  <tr key={i}>
+                    <td className="acq-nowrap">{new Date(r.created_at).toLocaleString("vi-VN")}</td>
+                    <td className="acq-mono">{r.email}</td>
+                    <td>
+                      <span className={"acq-tag " + (r.via === "web" ? "web" : "addin")}>
+                        {r.via === "web" ? "Web" : r.via === "addin" ? "Revit" + (r.channel === "store" ? " · Store" : "") : r.via || "—"}
+                      </span>
+                    </td>
+                    <td>{signupCountry(r) ? countryLabel(signupCountry(r)) : "—"}</td>
+                    <td className="acq-small">{[r.os_language, r.time_zone].filter(Boolean).join(" · ") || "—"}</td>
+                    <td>{sourceLabel(r) ? <span className="acq-tag src">{sourceLabel(r)}</span> : <span className="acq-muted">—</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <details className="acq-help">
+            <summary>Cách gắn nguồn cho link quảng cáo</summary>
+            <div>
+              YouTube: <span className="acq-mono">onetools-bim.com/en?utm_source=youtube&amp;utm_campaign=intl-video</span><br />
+              Facebook: <span className="acq-mono">onetools-bim.com/?utm_source=facebook&amp;utm_campaign=vn-fb</span><br />
+              Lượt tải trước 23/11/2026 không có nguồn/quốc gia (hiện là "chưa rõ").
+            </div>
+          </details>
         </>
       )}
     </div>
@@ -1597,4 +1649,50 @@ const adminStyles = `
   .form-row.checkbox label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #F3EFE6; }
   .form-row.checkbox input { width: auto; }
   .form-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .acq { max-width: 980px; }
+  .acq-muted { color: #8E8676; font-size: 13px; }
+  .acq-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+  .acq-seg { display: inline-flex; border: 1px solid #37342C; }
+  .acq-seg button { background: transparent; color: #CFC7B6; border: none; border-right: 1px solid #37342C; padding: 7px 14px; font-size: 13px; cursor: pointer; }
+  .acq-seg button:last-child { border-right: none; }
+  .acq-seg button.on { background: #C9A15F; color: #161512; font-weight: 600; }
+  .acq-btn { background: #24221D; color: #F3EFE6; border: 1px solid #37342C; padding: 7px 14px; font-size: 13px; cursor: pointer; }
+  .acq-btn:hover { background: #2E2B25; }
+  .acq-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #CFC7B6; margin-left: auto; cursor: pointer; }
+  .acq-error { font-size: 13px; color: #E08080; }
+  .acq-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 8px; }
+  .acq-kpi { background: #24221D; border: 1px solid #37342C; border-left: 3px solid #C9A15F; padding: 14px 16px; }
+  .acq-kpi-label { font-size: 12px; color: #A79E8C; text-transform: uppercase; letter-spacing: 0.05em; }
+  .acq-kpi-value { font-size: 28px; font-weight: 700; margin: 4px 0 2px; color: #F3EFE6; }
+  .acq-kpi-sub { font-size: 12px; color: #8E8676; }
+  .acq-section { margin: 26px 0 10px; font-size: 15px; font-weight: 600; color: #C9A15F; padding-bottom: 6px; border-bottom: 1px solid #37342C; }
+  .acq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .acq-card { background: #1F1D19; border: 1px solid #37342C; overflow: hidden; }
+  .acq-card-head { display: flex; justify-content: space-between; align-items: center; background: #2B2924; padding: 10px 14px; font-weight: 600; font-size: 13.5px; }
+  .acq-card-total { font-weight: 400; font-size: 12px; color: #A79E8C; }
+  .acq-card-note { font-size: 11.5px; color: #8E8676; padding: 6px 14px 0; }
+  .acq-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .acq-table td { padding: 8px 14px; border-top: 1px solid #2A2822; vertical-align: middle; }
+  .acq-table tbody tr:nth-child(even) td { background: #24221D; }
+  .acq-table tbody tr:hover td { background: #2E2B25; }
+  .acq-table th { text-align: left; padding: 9px 14px; background: #2B2924; color: #A79E8C; font-weight: 500; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .acq-label { width: 100%; }
+  .acq-bar { height: 4px; background: #2E2B25; margin-top: 5px; }
+  .acq-bar > div { height: 100%; background: #C9A15F; opacity: 0.75; }
+  .acq-num { text-align: right; font-weight: 600; width: 50px; }
+  .acq-pct { text-align: right; width: 50px; color: #8E8676; font-size: 12.5px; }
+  .acq-unknown td { color: #8E8676; font-style: italic; }
+  .acq-unknown .acq-bar > div { background: #5A5548; }
+  .acq-empty { color: #8E8676; text-align: center; padding: 16px !important; }
+  .acq-mono { font-family: monospace; color: #CFC7B6; font-size: 12.5px; }
+  .acq-small { font-size: 12px; color: #A79E8C; }
+  .acq-nowrap { white-space: nowrap; }
+  .acq-tag { display: inline-block; padding: 2px 8px; font-size: 12px; border: 1px solid #37342C; background: #2B2924; }
+  .acq-tag.web { color: #8FC1E8; border-color: #2D4558; background: #1C2731; }
+  .acq-tag.addin { color: #C9A15F; border-color: #4D3F27; background: #2A2318; }
+  .acq-tag.src { color: #9ED6A5; border-color: #2F4A33; background: #1B2A1D; }
+  .acq-help { margin-top: 22px; font-size: 12.5px; color: #8E8676; }
+  .acq-help summary { cursor: pointer; }
+  .acq-help div { margin-top: 8px; line-height: 1.8; padding: 10px 14px; background: #1F1D19; border: 1px solid #2A2822; }
+  @media (max-width: 760px) { .acq-grid, .acq-kpis { grid-template-columns: 1fr; } }
 `;
