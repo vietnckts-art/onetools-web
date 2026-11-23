@@ -8,7 +8,7 @@ export const metadata = {
 };
 
 const TITLE = { vi: "Chính sách bảo mật", en: "Privacy Policy" };
-const LAST_UPDATED = { vi: "Cập nhật lần cuối: Tháng 9/2026", en: "Last updated: September 2026" };
+const LAST_UPDATED = { vi: "Cập nhật lần cuối: Tháng 11/2026", en: "Last updated: November 2026" };
 const CONTACT_HEADING = { vi: "7. Liên hệ", en: "7. Contact Us" };
 
 const SECTIONS = {
@@ -17,7 +17,8 @@ const SECTIONS = {
       heading: "1. Thông tin chúng tôi thu thập",
       list: [
         "Thông tin cá nhân: Họ tên, email, số điện thoại và thông tin thanh toán do bạn cung cấp khi đăng ký tài khoản hoặc thanh toán.",
-        "Định danh phần cứng: Machine ID / Hardware Serial Key, dùng để cấp phát và xác thực license phần mềm OneTools.",
+        "Định danh máy và thông tin phần mềm: mã nhận diện ẩn danh của máy (giá trị băm từ thông tin phần cứng), phiên bản OneTools và kênh phát hành (website hoặc Autodesk App Store), dùng để cấp phát, xác thực license và thông báo bản cập nhật phù hợp. OneTools không đọc hay tải lên mô hình Revit của bạn.",
+        "Nội dung phản hồi: khi bạn chủ động gửi phản hồi/báo lỗi từ trong OneTools, chúng tôi nhận nội dung và ảnh đính kèm bạn chọn gửi.",
         "Dữ liệu thanh toán: Chúng tôi KHÔNG lưu trữ hay xử lý trực tiếp số thẻ tín dụng/tài khoản ngân hàng của bạn trên máy chủ của mình. Toàn bộ giao dịch được xử lý bảo mật qua các đối tác thanh toán được uỷ quyền là Paddle và PayOS. Khi thanh toán qua Paddle, Paddle đóng vai trò Merchant of Record (bên bán chính thức về mặt pháp lý) và giao dịch của bạn tuân theo Chính sách bảo mật riêng của Paddle.",
       ],
     },
@@ -64,7 +65,8 @@ const SECTIONS = {
       heading: "1. Information We Collect",
       list: [
         "Personal Information: Name, email address, phone number, and billing information you provide when creating an account or checking out.",
-        "Hardware Identifiers: Machine ID / Hardware Serial Key, used strictly to issue and verify your OneTools license activation.",
+        "Device and software information: an anonymous device identifier (a hash of hardware information), the OneTools version and its distribution channel (website or Autodesk App Store), used to issue and verify your license and to show the right update notices. OneTools does not read or upload your Revit models.",
+        "Feedback content: when you choose to send feedback or a bug report from inside OneTools, we receive its text and any images you attach.",
         "Payment Data: We do NOT store or process your credit card or bank account details on our own servers. All transactions are securely handled by our authorized payment processors, Paddle and PayOS. When you check out via Paddle, Paddle acts as the Merchant of Record and your transaction is subject to Paddle's own Privacy Policy.",
       ],
     },

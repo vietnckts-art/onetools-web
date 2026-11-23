@@ -913,6 +913,17 @@ function ReleasesManager() {
     load();
   };
 
+  // MỚI (2026-11-23, Autodesk App Store): đánh dấu bản này ĐÃ CÓ trên Autodesk App Store (Autodesk duyệt xong).
+  // Edge Function activate-seat / confirm-seat-otp lấy bản on_store mới nhất để báo "có bản mới" cho khách cài
+  // từ Store (channel = "store") — khách web vẫn theo cột "Mới nhất" như cũ.
+  const toggleOnStore = async (row) => {
+    const next = !row.on_store;
+    if (next && !confirm(`Xác nhận bản ${row.version} ĐÃ được Autodesk duyệt và đang có trên Autodesk App Store?\nKhách cài bản Store đang dùng bản cũ hơn sẽ nhận thông báo cập nhật.`)) return;
+    const { error } = await supabase.from("releases").update({ on_store: next }).eq("id", row.id);
+    if (error) alert("Lỗi: " + error.message + "\n(Đã chạy sql/schema_store_channel.sql chưa?)");
+    load();
+  };
+
   const remove = async (row) => {
     if (!confirm(`Xoá bản ${row.version}? File trong Storage sẽ không tự xoá theo, cần xoá thủ công nếu muốn dọn dẹp.`)) return;
     await supabase.from("releases").delete().eq("id", row.id);
@@ -1100,7 +1111,9 @@ function ReleasesManager() {
         <table className="admin-table">
           <thead>
             <tr>
-              <th>Phiên bản</th><th>File</th><th>Dung lượng</th><th>Mới nhất</th><th>Ngày đăng</th>
+              <th>Phiên bản</th><th>File</th><th>Dung lượng</th><th>Mới nhất</th>
+              <th title="Bản này đã được Autodesk duyệt và có trên Autodesk App Store">Trên Store</th>
+              <th>Ngày đăng</th>
               <th title="Số lượt bấm nút Tải về trên web (tổng / 7 ngày qua)">Lượt tải web</th>
               <th title="Số máy đang chạy phiên bản này, có mở OneTools trong 30 ngày qua">Máy đang dùng</th>
               <th></th>
@@ -1113,6 +1126,7 @@ function ReleasesManager() {
                 <td className="mono">{r.file_name}</td>
                 <td>{r.file_size_mb} MB</td>
                 <td>{r.is_latest ? "✓" : "—"}</td>
+                <td>{r.on_store ? "✓" : "—"}</td>
                 <td>{new Date(r.published_at).toLocaleDateString("vi-VN")}</td>
                 <td>
                   {Number(stats[r.version]?.dl_total ?? 0)}
@@ -1122,6 +1136,7 @@ function ReleasesManager() {
                 <td className="actions">
                   <button onClick={() => startEdit(r)}>Sửa</button>
                   {!r.is_latest && <button onClick={() => markLatest(r.id)}>Đặt làm mới nhất</button>}
+                  <button onClick={() => toggleOnStore(r)}>{r.on_store ? "Bỏ Store" : "Đã có trên Store"}</button>
                   <button className="danger" onClick={() => remove(r)}>Xoá</button>
                 </td>
               </tr>
