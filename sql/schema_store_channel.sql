@@ -44,3 +44,9 @@ create policy "Admin manage channel policy"
   using (public.is_admin())
   with check (public.is_admin());
 -- (Edge Function dùng service role nên đọc được, không cần policy public.)
+
+-- ---------------------------------------------------------------------
+-- (2026-11-23) Mặc định "Phiên bản Revit hỗ trợ" của bảng releases thêm 2027
+-- (giá trị cũ '2025 · 2026' có từ trước khi hỗ trợ Revit 2027).
+-- ---------------------------------------------------------------------
+alter table public.releases alter column revit_versions set default '2025 · 2026 · 2027';
