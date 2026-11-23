@@ -806,9 +806,18 @@ function PromoCodeForm({ form, setForm, onSave, onCancel, saving, saveError }) {
 // =====================================================================
 const UNKNOWN = "(chưa rõ)";
 
-function flag(code) {
-  if (!code || code.length !== 2) return "";
-  return String.fromCodePoint(...code.toUpperCase().split("").map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));
+// ĐỔI (2026-11-23): bỏ emoji cờ (Windows không vẽ được, hiện thành "VN VN") -> "VN · Việt Nam".
+let _regionNames = null;
+function countryLabel(code) {
+  if (!code || code === UNKNOWN) return code || "—";
+  const c = code.toUpperCase();
+  try {
+    if (!_regionNames) _regionNames = new Intl.DisplayNames(["vi"], { type: "region" });
+    const name = _regionNames.of(c);
+    return name && name !== c ? `${c} · ${name}` : c;
+  } catch (e) {
+    return c;
+  }
 }
 
 function countBy(rows, keyFn) {
@@ -833,7 +842,7 @@ function CountTable({ title, rows, isCountry, note }) {
           )}
           {rows.map(([k, n]) => (
             <tr key={k}>
-              <td>{isCountry && k !== UNKNOWN ? `${flag(k)} ${k}` : k}</td>
+              <td>{isCountry ? countryLabel(k) : k}</td>
               <td style={{ textAlign: "right", width: 60 }}>{n}</td>
               <td style={{ textAlign: "right", width: 60, opacity: 0.6 }}>
                 {total ? Math.round((n * 100) / total) + "%" : ""}
@@ -945,7 +954,7 @@ function AcquisitionManager() {
                   <td>{new Date(r.created_at).toLocaleString("vi-VN")}</td>
                   <td className="mono">{r.email}</td>
                   <td>{r.via === "web" ? "Web" : r.via === "addin" ? "Trong Revit" + (r.channel === "store" ? " (Store)" : "") : r.via || "—"}</td>
-                  <td>{signupCountry(r) ? `${flag(signupCountry(r))} ${signupCountry(r)}` : "—"}</td>
+                  <td>{signupCountry(r) ? countryLabel(signupCountry(r)) : "—"}</td>
                   <td style={{ fontSize: 12 }}>{[r.os_language, r.time_zone].filter(Boolean).join(" · ") || "—"}</td>
                   <td>{sourceLabel(r) || "—"}</td>
                 </tr>
