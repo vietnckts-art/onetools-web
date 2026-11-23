@@ -6,7 +6,7 @@ import { supabase } from "../lib/supabaseClient";
 import { getPaddle } from "../lib/paddleClient";
 import { formatPaddleMinor, mapPricePreview } from "../lib/paddlePrice";
 import PaymentMethodPanel from "./checkout/PaymentMethodPanel";
-import { captureAttribution, getAttribution, trackAdsConversion } from "../lib/attribution";
+import { captureAttribution, getAttribution, trackAdsConversion, trackMetaEvent } from "../lib/attribution";
 
 
 // =====================================================================
@@ -1360,6 +1360,8 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
                       .then(() => {}, () => {});
                     // Google Ads: chuyển đổi "Tải về" (chỉ chạy khi đã cấu hình biến môi trường).
                     trackAdsConversion(process.env.NEXT_PUBLIC_GADS_DOWNLOAD_LABEL);
+                    // Meta Pixel: "Lead" = khách tải bản dùng thử (chỉ chạy khi đã cấu hình Pixel ID).
+                    trackMetaEvent("Lead", { content_name: "OneTools Setup " + release.version });
                   }}
                 >
                   {t.download.btn}

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 import { callEdgeFunction } from "../../lib/callEdgeFunction";
 import { useLang } from "../../lib/useLang";
-import { getAttribution, getCountry } from "../../lib/attribution";
+import { getAttribution, getCountry, trackAdsConversion, trackMetaEvent } from "../../lib/attribution";
 
 const STR = {
   vi: {
@@ -128,6 +128,10 @@ export default function SignupPage() {
       setErrorMsg(translateServerMessage(data, lang) || s.errGeneric);
       return;
     }
+
+    // Đăng ký thành công: báo cho Meta Pixel (+ Google Ads nếu có đặt label riêng cho đăng ký).
+    trackMetaEvent("CompleteRegistration", { content_name: "OneTools account" });
+    trackAdsConversion(process.env.NEXT_PUBLIC_GADS_SIGNUP_LABEL);
 
     const { error: sessionError } = await supabase.auth.setSession({
       access_token: data.access_token,
