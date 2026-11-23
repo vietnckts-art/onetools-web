@@ -13,7 +13,8 @@ export default function EnRedirect() {
     try {
       window.localStorage.setItem("onetools-lang", "en");
     } catch (e) {}
-    router.replace("/");
+    // ĐỔI (2026-11-23): giữ nguyên tham số UTM (?utm_source=...) khi chuyển về trang chủ để thống kê nguồn khách.
+    router.replace("/" + (window.location.search || ""));
   }, [router]);
 
   return (

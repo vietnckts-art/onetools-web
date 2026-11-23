@@ -1,3 +1,5 @@
+import Script from "next/script";
+
 // Mô tả cập nhật 2026-10-23 (user yêu cầu): bản cũ chỉ nhắc "dimension cột, vách, cọc" — quá hẹp so với
 // bộ công cụ thật (Grid & Level, cửa/cửa sổ, cầu thang, phòng/không gian, đánh số lại, kiểm tra LOD &
 // sức khoẻ mô hình, CAD-to-Revit, xuất bản vẽ hàng loạt...). `openGraph.images` đổi từ "/logo.png" (ảnh
@@ -26,10 +28,29 @@ export const metadata = {
   },
 };
 
+// MỚI (2026-11-23): Google Ads tag (gtag.js) - CHỈ nạp khi đã đặt biến môi trường NEXT_PUBLIC_GADS_ID
+// (dạng "AW-1234567890") trên Vercel. Chuyển đổi "Tải về" bắn ở LandingClient (lib/attribution.js
+// trackAdsConversion + NEXT_PUBLIC_GADS_DOWNLOAD_LABEL). Chưa đặt biến = không nạp gì, web chạy như cũ.
+const GADS_ID = process.env.NEXT_PUBLIC_GADS_ID;
+
 export default function RootLayout({ children }) {
   return (
     <html lang="vi">
-      <body style={{ margin: 0, padding: 0 }}>{children}</body>
+      <body style={{ margin: 0, padding: 0 }}>
+        {children}
+        {GADS_ID && (
+          <>
+            <Script src={`https://www.googletagmanager.com/gtag/js?id=${GADS_ID}`} strategy="afterInteractive" />
+            <Script id="gads-init" strategy="afterInteractive">
+              {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+window.gtag = gtag;
+gtag('js', new Date());
+gtag('config', '${GADS_ID}');`}
+            </Script>
+          </>
+        )}
+      </body>
     </html>
   );
 }

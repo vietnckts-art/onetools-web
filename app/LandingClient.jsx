@@ -6,6 +6,7 @@ import { supabase } from "../lib/supabaseClient";
 import { getPaddle } from "../lib/paddleClient";
 import { formatPaddleMinor, mapPricePreview } from "../lib/paddlePrice";
 import PaymentMethodPanel from "./checkout/PaymentMethodPanel";
+import { captureAttribution, getAttribution, trackAdsConversion } from "../lib/attribution";
 
 
 // =====================================================================
@@ -1345,9 +1346,20 @@ function OneToolsLandingInner({ videos, plans, release, country }) {
                   href={release.download_url}
                   onClick={() => {
                     // Ghi 1 lượt tải để thống kê trong /admin (không chặn việc tải nếu lỗi).
+                    // MỚI (2026-11-23): kèm nguồn quảng cáo (UTM) + quốc gia + trang giới thiệu - xem lib/attribution.js.
+                    const a = getAttribution();
                     supabase
-                      .rpc("log_download", { p_version: release.version, p_source: "web" })
+                      .rpc("log_download", {
+                        p_version: release.version,
+                        p_source: "web",
+                        p_utm_source: a.utm_source,
+                        p_utm_campaign: a.utm_campaign,
+                        p_country: country || null,
+                        p_referrer: a.referrer,
+                      })
                       .then(() => {}, () => {});
+                    // Google Ads: chuyển đổi "Tải về" (chỉ chạy khi đã cấu hình biến môi trường).
+                    trackAdsConversion(process.env.NEXT_PUBLIC_GADS_DOWNLOAD_LABEL);
                   }}
                 >
                   {t.download.btn}
@@ -1587,6 +1599,8 @@ export default function OneToolsLanding({ videos, plans, release, country }) {
   useEffect(() => {
     setLangState(detectInitialLang());
     setMounted(true);
+    // MỚI (2026-11-23): ghi nhớ khách đến từ quảng cáo nào (UTM / gclid / fbclid / referrer).
+    captureAttribution();
   }, []);
 
   const setLang = (next) => {

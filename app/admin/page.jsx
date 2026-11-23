@@ -146,6 +146,9 @@ export default function AdminPage() {
         <button className={tab === "feedback" ? "active" : ""} onClick={() => setTab("feedback")}>
           Phản hồi
         </button>
+        <button className={tab === "acquisition" ? "active" : ""} onClick={() => setTab("acquisition")}>
+          Nguồn khách
+        </button>
       </nav>
       <main className="admin-main">
         {tab === "videos" && <VideosManager />}
@@ -154,6 +157,7 @@ export default function AdminPage() {
         {tab === "promo_codes" && <PromoCodesManager />}
         {tab === "releases" && <ReleasesManager />}
         {tab === "feedback" && <FeedbackManager />}
+        {tab === "acquisition" && <AcquisitionManager />}
       </main>
     </div>
   );
@@ -791,6 +795,165 @@ function PromoCodeForm({ form, setForm, onSave, onCancel, saving, saveError }) {
         <button className="btn-ghost" onClick={onCancel}>Huỷ</button>
       </div>
       {saveError && <p style={{ color: "#E08080", fontSize: 12.5, marginTop: 10 }}>{saveError}</p>}
+    </div>
+  );
+}
+
+// =====================================================================
+// MỚI (2026-11-23): NGUỒN KHÁCH - lượt tải web + lượt đăng ký Trial theo nguồn quảng cáo / quốc gia.
+// Đọc thẳng 2 bảng download_events + signup_events (RLS: chỉ admin đọc được) rồi gộp số ở trình duyệt.
+// Cần chạy sql/schema_attribution.sql trước.
+// =====================================================================
+const UNKNOWN = "(chưa rõ)";
+
+function flag(code) {
+  if (!code || code.length !== 2) return "";
+  return String.fromCodePoint(...code.toUpperCase().split("").map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));
+}
+
+function countBy(rows, keyFn) {
+  const m = new Map();
+  for (const r of rows) {
+    const k = keyFn(r) || UNKNOWN;
+    m.set(k, (m.get(k) || 0) + 1);
+  }
+  return [...m.entries()].sort((a, b) => b[1] - a[1]);
+}
+
+function CountTable({ title, rows, isCountry, note }) {
+  const total = rows.reduce((n, r) => n + r[1], 0);
+  return (
+    <div style={{ flex: "1 1 280px", minWidth: 260 }}>
+      <h4 style={{ margin: "18px 0 4px" }}>{title}</h4>
+      {note && <p style={{ fontSize: 12, opacity: 0.6, margin: "0 0 4px" }}>{note}</p>}
+      <table className="admin-table">
+        <tbody>
+          {rows.length === 0 && (
+            <tr><td style={{ opacity: 0.6 }}>Chưa có dữ liệu</td></tr>
+          )}
+          {rows.map(([k, n]) => (
+            <tr key={k}>
+              <td>{isCountry && k !== UNKNOWN ? `${flag(k)} ${k}` : k}</td>
+              <td style={{ textAlign: "right", width: 60 }}>{n}</td>
+              <td style={{ textAlign: "right", width: 60, opacity: 0.6 }}>
+                {total ? Math.round((n * 100) / total) + "%" : ""}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function AcquisitionManager() {
+  const [days, setDays] = useState(30);
+  const [downloads, setDownloads] = useState([]);
+  const [signups, setSignups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    const [dl, su] = await Promise.all([
+      supabase
+        .from("download_events")
+        .select("created_at, version, utm_source, utm_campaign, country, referrer")
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(5000),
+      supabase
+        .from("signup_events")
+        .select("created_at, email, via, country, os_region, os_language, time_zone, utm_source, utm_campaign, channel")
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(5000),
+    ]);
+    if (dl.error || su.error) {
+      setError(
+        "Chưa đọc được dữ liệu: " + (dl.error || su.error).message + " (Đã chạy sql/schema_attribution.sql chưa?)",
+      );
+    }
+    setDownloads(dl.data || []);
+    setSignups(su.data || []);
+    setLoading(false);
+  }, [days]);
+
+  useEffect(() => { load(); }, [load]);
+
+  // Quốc gia khi đăng ký: ưu tiên quốc gia theo IP (đăng ký trên web), nếu không có thì vùng Windows (đăng ký trong Revit).
+  const signupCountry = (r) => r.country || r.os_region;
+  const signupSource = (r) => r.utm_source || (r.via === "addin" ? "trong Revit (không rõ quảng cáo)" : null);
+  const sourceLabel = (r) => (r.utm_source ? r.utm_source + (r.utm_campaign ? " · " + r.utm_campaign : "") : null);
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <span>Khoảng thời gian:</span>
+        {[7, 30, 90].map((d) => (
+          <button key={d} className={days === d ? "btn-primary" : "btn-ghost"} onClick={() => setDays(d)}>
+            {d} ngày
+          </button>
+        ))}
+        <button className="btn-ghost" onClick={load}>Tải lại</button>
+      </div>
+
+      {error && <p style={{ fontSize: 13, color: "#E08080" }}>{error}</p>}
+
+      <p style={{ fontSize: 13, opacity: 0.75, marginTop: 12 }}>
+        Gắn UTM vào link quảng cáo để biết khách đến từ đâu, ví dụ YouTube:{" "}
+        <span className="mono">onetools-bim.com/en?utm_source=youtube&amp;utm_campaign=intl-video</span> · Facebook:{" "}
+        <span className="mono">onetools-bim.com/?utm_source=facebook&amp;utm_campaign=vn-fb</span>. Lượt tải trước
+        23/11/2026 không có nguồn/quốc gia.
+      </p>
+
+      {loading ? (
+        <p>Đang tải...</p>
+      ) : (
+        <>
+          <p style={{ marginTop: 16 }}>
+            <b>{downloads.length}</b> lượt bấm Tải về · <b>{signups.length}</b> lượt đăng ký Trial ({days} ngày qua)
+          </p>
+
+          <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+            <CountTable title="Lượt tải theo nguồn" rows={countBy(downloads, sourceLabel)} />
+            <CountTable title="Lượt tải theo quốc gia" rows={countBy(downloads, (r) => r.country)} isCountry />
+          </div>
+          <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+            <CountTable
+              title="Đăng ký theo quốc gia"
+              rows={countBy(signups, signupCountry)}
+              isCountry
+              note="Đăng ký trên web: theo IP. Đăng ký trong Revit: theo vùng cài trong Windows."
+            />
+            <CountTable title="Đăng ký theo nguồn" rows={countBy(signups, signupSource)} />
+          </div>
+
+          <h4 style={{ margin: "22px 0 4px" }}>Đăng ký gần đây</h4>
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Thời gian</th><th>Email</th><th>Nơi đăng ký</th><th>Quốc gia</th>
+                <th>Ngôn ngữ / múi giờ Windows</th><th>Nguồn</th>
+              </tr>
+            </thead>
+            <tbody>
+              {signups.slice(0, 50).map((r, i) => (
+                <tr key={i}>
+                  <td>{new Date(r.created_at).toLocaleString("vi-VN")}</td>
+                  <td className="mono">{r.email}</td>
+                  <td>{r.via === "web" ? "Web" : r.via === "addin" ? "Trong Revit" + (r.channel === "store" ? " (Store)" : "") : r.via || "—"}</td>
+                  <td>{signupCountry(r) ? `${flag(signupCountry(r))} ${signupCountry(r)}` : "—"}</td>
+                  <td style={{ fontSize: 12 }}>{[r.os_language, r.time_zone].filter(Boolean).join(" · ") || "—"}</td>
+                  <td>{sourceLabel(r) || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
     </div>
   );
 }

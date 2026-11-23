@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 import { callEdgeFunction } from "../../lib/callEdgeFunction";
 import { useLang } from "../../lib/useLang";
+import { getAttribution, getCountry } from "../../lib/attribution";
 
 const STR = {
   vi: {
@@ -110,7 +111,17 @@ export default function SignupPage() {
 
     setStatus("sending");
 
-    const { ok, data } = await callEdgeFunction("sign-up", { email, password });
+    // MỚI (2026-11-23): gửi kèm nguồn quảng cáo + quốc gia để thống kê (Edge Function sign-up ghi signup_events).
+    const a = getAttribution();
+    const country = await getCountry();
+    const { ok, data } = await callEdgeFunction("sign-up", {
+      email,
+      password,
+      via: "web",
+      country,
+      utm_source: a.utm_source,
+      utm_campaign: a.utm_campaign,
+    });
 
     if (!ok || data.status !== "ok") {
       setStatus("error");
